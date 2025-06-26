@@ -8,7 +8,7 @@ abstract class KoinBootInitializerExtension {
     /**
      * 生成的包名
      */
-    var generatedPackage: String = "${rootProject.group}.generated"
+    var generatedPackage: String = "io.github.kamo030.generated"
 
     /**
      * 生成的类名
@@ -129,4 +129,4 @@ class KoinBootInitializerPlugin : Plugin<Project> {
 
 }
 
-apply<KoinBootInitializerPlugin>()
+project.pluginManager.apply(KoinBootInitializerPlugin::class.java)

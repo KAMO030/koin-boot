@@ -1,2 +1,2 @@
-package io.github.kamo030.koinboot
+package io.github.kamo030
 

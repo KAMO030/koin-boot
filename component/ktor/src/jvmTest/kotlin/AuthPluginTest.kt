@@ -1,6 +1,6 @@
 package io.github.kamo030.koinboot.component.ktor.test
 
-import io.github.kamo030.koinboot.KtorBootInitializer
+import io.github.kamo030.KtorBootInitializer
 import io.github.kamo030.koinboot.core.runKoinBoot
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -13,7 +13,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.koin.dsl.module
 import org.koin.mp.KoinPlatformTools
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue

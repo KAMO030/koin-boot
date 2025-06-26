@@ -1,9 +1,9 @@
 package io.github.kamo030.koinboot.component.ktor.test
 
-import io.github.kamo030.koinboot.KtorBootInitializer
+import io.github.kamo030.KtorBootInitializer
+import io.github.kamo030.koinboot.component.ktor.*
 import io.github.kamo030.koinboot.core.app_logger_level
 import io.github.kamo030.koinboot.core.runKoinBoot
-import io.github.kamo030.koinboot.component.ktor.*
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*

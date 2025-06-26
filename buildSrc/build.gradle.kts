@@ -17,9 +17,12 @@ repositories {
 }
 
 dependencies {
+    api(libs.kotlin.gradle.plugin)
     api(libs.android.gradle.plugin)
     api(libs.android.application.gradle.plugin)
     api(libs.android.library.gradle.plugin)
+    implementation("com.android.tools.build:gradle:8.0.0")
+
     api(libs.compose.multiplatfrom.gradle.plugin)
     api(libs.kotlin.compose.compiler.gradle.plugin)
 }

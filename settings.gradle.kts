@@ -32,4 +32,6 @@ include(":core")
 include(":component:ktor")
 include(":component:kermit")
 include(":component:multiplatform-settings")
+
+include(":sample")
 //include(":component:sentry")

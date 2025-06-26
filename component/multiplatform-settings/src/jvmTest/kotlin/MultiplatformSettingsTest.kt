@@ -2,13 +2,13 @@ package io.github.kamo030.koinboot.component.multiplatformsettings.test
 
 import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
-import io.github.kamo030.koinboot.MultiplatformSettingsBootInitializer
-import io.github.kamo030.koinboot.core.getPropInstance
-import io.github.kamo030.koinboot.core.runKoinBoot
+import io.github.kamo030.MultiplatformSettingsBootInitializer
 import io.github.kamo030.koinboot.component.multiplatformsettings.MultiplatformSettingsProperties
 import io.github.kamo030.koinboot.component.multiplatformsettings.MultiplatformSettingsProperties.Companion.MULTIPLATFORM_SETTINGS_DESKTOP_PATH
 import io.github.kamo030.koinboot.component.multiplatformsettings.getSettings
 import io.github.kamo030.koinboot.component.multiplatformsettings.multiplatform_settings_desktop_path
+import io.github.kamo030.koinboot.core.getPropInstance
+import io.github.kamo030.koinboot.core.runKoinBoot
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.koin.dsl.module
