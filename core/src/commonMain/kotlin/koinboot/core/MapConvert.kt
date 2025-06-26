@@ -1,5 +1,8 @@
 package io.github.kamo030.koinboot.core
 
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.elementDescriptors
+import kotlinx.serialization.descriptors.elementNames
 import kotlinx.serialization.json.*
 
 /**
@@ -79,5 +82,69 @@ fun convertToFinalJsonElement(item: Any?): JsonElement {
         is Boolean -> JsonPrimitive(item)
         is Enum<*> -> JsonPrimitive(item.name)
         else -> error("Unsupported type: ${item::class.qualifiedName}")
+    }
+}
+
+
+// 递归处理 JsonElement，生成扁平化的属性 Map
+fun processJsonElement(
+    element: JsonElement,
+    descriptor: SerialDescriptor,
+    result: MutableMap<String, Any>,
+    currentPath: String = ""
+) {
+    when (element) {
+        is JsonObject -> {
+            // 从描述符获取注解信息
+            val koinPropAnnotation = descriptor.annotations
+                .filterIsInstance<KoinPropInstance>()
+                .firstOrNull()
+
+            val prefix = koinPropAnnotation?.preKey ?: ""
+
+            // 确定当前对象的路径前缀
+            val objectPath = when {
+                currentPath.isEmpty() && prefix.isNotEmpty() -> prefix
+                currentPath.isNotEmpty() && prefix.isNotEmpty() -> prefix
+                currentPath.isNotEmpty() && prefix.isEmpty() -> currentPath
+                else -> ""
+            }
+
+            // 遍历对象的所有字段
+            element.forEach { (key, value) ->
+                val elementIndex = descriptor.elementNames.indexOf(key)
+                if (elementIndex >= 0) {
+                    val elementDescriptor = descriptor.elementDescriptors.elementAt(elementIndex)
+                    val propertyPath = if (objectPath.isNotEmpty()) {
+                        "$objectPath.$key"
+                    } else {
+                        key
+                    }
+
+                    processJsonElement(value, elementDescriptor, result, propertyPath)
+                }
+            }
+        }
+
+        is JsonArray -> {
+            // 处理数组类型（如果需要的话）
+            element.forEachIndexed { index, item ->
+                val arrayPath = "$currentPath[$index]"
+                processJsonElement(item, descriptor, result, arrayPath)
+            }
+        }
+
+        is JsonPrimitive -> {
+            // 基本类型直接存储
+            when {
+                element.contentOrNull != null -> result[currentPath] = element.content
+                element.booleanOrNull != null -> result[currentPath] = element.boolean
+                element.intOrNull != null -> result[currentPath] = element.int
+                element.longOrNull != null -> result[currentPath] = element.long
+                element.floatOrNull != null -> result[currentPath] = element.float
+                element.doubleOrNull != null -> result[currentPath] = element.double
+                else -> result[currentPath] = element.content
+            }
+        }
     }
 }

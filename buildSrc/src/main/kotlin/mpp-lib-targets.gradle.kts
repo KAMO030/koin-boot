@@ -1,18 +1,9 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.LibraryExtension
-import org.gradle.kotlin.dsl.kotlin
-import org.jetbrains.compose.ComposeExtension
-import org.jetbrains.compose.ComposePlugin
-import org.jetbrains.compose.ExperimentalComposeLibrary
-import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
-import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 /*
  * 配置 JVM + Android 的 compose 项目. 默认不会配置 resources.
@@ -64,4 +55,34 @@ configure<KotlinMultiplatformExtension> {
             implementation(project(":core"))
         }
     }
+    versionCatalogs.first().findVersion("kotlin").get().let {
+        sourceSets.commonTest.dependencies {
+            implementation(kotlin("test-annotations-common", it.preferredVersion))
+        }
+        sourceSets.jvmTest.dependencies {
+            implementation(kotlin("test-junit5", it.preferredVersion))
+        }
+    }
+    versionCatalogs.first().findLibrary("kotlinx-coroutines-test").let {
+        sourceSets.commonTest.dependencies {
+            implementation(it.get())
+        }
+    }
+}
+
+if (android != null){
+    configure<LibraryExtension>{
+        compileSdk = getProperty("android.compileSdk").toInt()
+        defaultConfig {
+            minSdk = getProperty("android.minSdk").toInt()
+        }
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+        sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    }
+}
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

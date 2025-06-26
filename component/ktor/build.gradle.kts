@@ -29,6 +29,7 @@ kotlin {
         }
     }
 }
+
 android {
     namespace = "${getProperty("android.namespace")}.component.ktor"
 }
