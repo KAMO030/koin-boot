@@ -1,536 +1,80 @@
 # KoinBoot
 
-## 目录
+## 快速开始
 
-1. [KoinBoot 实现原理](#koinboot-实现原理)
-2. [KoinBoot 核心组件](#koinboot-核心组件)
-    - [KoinAutoConfiguration](#koinautoconfiguration)
-    - [KoinBootLifecycleExtender](#koinbootlifecycleextender)
-    - [KoinBootInitializer](#koinbootinitializer)
-3. [koin-boot-initializer 插件](#koin-boot-initializer-插件)
-4. [适配第三方库的步骤](#适配第三方库的步骤)
-    - [步骤一：创建配置属性类](#步骤一创建配置属性类)
-    - [步骤二：选择适配方式](#步骤二选择适配方式)
-    - [步骤三：创建 BootInitializer](#步骤三创建-bootinitializer)
-5. [适配方式详解](#适配方式详解)
-    - [方式一：使用 KoinAutoConfiguration](#方式一使用-koinautoconfiguration)
-    - [方式二：使用 KoinBootLifecycleExtender](#方式二使用-koinbootlifecycleextender)
-6. [现有适配示例分析](#现有适配示例分析)
-    - [Ktor 适配分析](#ktor-适配分析)
-    - [Sentry 适配分析](#sentry-适配分析)
-    - [MultiplatformSettings 适配分析](#multiplatformsettings-适配分析)
-    - [Kermit 适配分析](#kermit-适配分析)
-7. [最佳实践](#最佳实践)
-8. [常见问题解答](#常见问题解答)
+### 1. 添加依赖
 
-## KoinBoot 实现原理
-
-KoinBoot 是一个基于 Koin 依赖注入框架的自动装配系统，它通过生命周期管理和自动配置机制，简化了应用程序的初始化和配置过程。KoinBoot
-的核心思想是：
-
-1. **约定优于配置**：提供合理的默认配置，减少用户的配置工作
-2. **生命周期管理**：通过定义明确的启动阶段，确保组件按正确的顺序初始化
-3. **可扩展性**：允许通过自动配置和生命周期扩展器扩展功能
-
-KoinBoot 的启动流程分为以下几个阶段：
-
-1. **Starting**：启动阶段，检查是否已经启动
-2. **Configuring**：配置阶段，执行应用程序声明和配置 Kermit 日志
-3. **PropertiesLoading**：属性加载阶段，加载配置属性
-4. **ModulesLoading**：模块加载阶段，加载用户模块和执行自动配置
-5. **Ready**：就绪阶段，系统准备就绪
-6. **Running**：运行阶段，系统正在运行
-7. **Stopping**：停止阶段，系统正在停止
-8. **Stopped**：已停止阶段，系统已停止
-
-在每个阶段，KoinBoot 会执行相应的操作，并调用注册的生命周期扩展器的相应方法。这种基于阶段的设计确保了组件的初始化和清理按照正确的顺序进行。
-
-## KoinBoot 核心组件
-
-### KoinAutoConfiguration
-
-`KoinAutoConfiguration` 是一个接口，用于定义自动配置。它有三个主要部分：
-
-1. **match()**：决定是否应用配置的条件，默认返回 true
-2. **configure()**：包含实际的配置逻辑
-3. **order**：控制配置的顺序，数字越小优先级越高
-
-```kotlin
-interface KoinAutoConfiguration {
-    fun KoinAutoConfigurationScope.match(): Boolean = true
-    fun KoinAutoConfigurationScope.configure()
-    val order: Int get() = Int.MAX_VALUE
-}
-```
-
-KoinBoot 提供了一个辅助函数 `koinAutoConfiguration()` 来创建实现，无需子类化：
-
-```kotlin
-val MyAutoConfiguration = koinAutoConfiguration {
-    module {
-        // 配置逻辑
-    }
-}
-```
-
-`KoinAutoConfiguration` 的主要作用是：
-
-1. **提供默认实现**：当用户没有配置自己的实现时，提供默认实现
-2. **配置组件**：根据配置属性配置组件
-3. **注册依赖项**：将组件注册到 Koin 容器中
-
-在 ModulesLoading 阶段，KoinBoot 会执行所有注册的自动配置，按照它们的 order 值排序。
-
-### KoinBootLifecycleExtender
-
-`KoinBootLifecycleExtender` 是一个接口，用于定义生命周期扩展。它为每个生命周期阶段提供了方法：
-
-```kotlin
-interface KoinBootLifecycleExtender {
-    fun doPhaseChange(phase: KoinBootPhase, context: KoinBootContext) {
-        // 根据阶段调用相应的方法
-    }
-
-    fun doStarting(context: KoinBootContext) {}
-    fun doConfiguring(context: KoinBootContext) {}
-    fun doPropertiesLoading(context: KoinBootContext) {}
-    fun doModulesLoading(context: KoinBootContext) {}
-    fun doReady(context: KoinBootContext) {}
-    fun doRunning(context: KoinBootContext) {}
-    fun doStopping(context: KoinBootContext) {}
-    fun doStopped(context: KoinBootContext) {}
-}
-```
-
-`KoinBootLifecycleExtender` 的主要作用是：
-
-1. **初始化组件**：在适当的阶段初始化组件
-2. **清理资源**：在停止阶段清理资源
-3. **扩展功能**：在不同阶段扩展 KoinBoot 的功能
-
-生命周期扩展器可以在任何阶段执行操作，但通常在 Configuring 阶段初始化组件，在 Stopping 阶段清理资源。
-
-### KoinBootInitializer
-
-`KoinBootInitializer` 是一个类型别名，用于定义初始化逻辑：
-
-```kotlin
-typealias KoinBootInitializer = KoinBootDSL.() -> Unit
-```
-
-每个支持自动装配的库都会提供一个 `KoinBootInitializer`，用于注册其自动配置或生命周期扩展器。`KoinBootInitializer` 是连接库和
-KoinBoot 的桥梁，它告诉 KoinBoot 如何配置和初始化库。
-
-## koin-boot-initializer 插件
-
-`koin-boot-initializer` 是一个 Gradle 插件，用于自动收集和组合所有依赖项中的 BootInitializer。它的工作原理是：
-
-1. 扫描项目依赖项中的 BootInitializer
-2. 生成一个组合所有 BootInitializer 的新 BootInitializer
-3. 将生成的 BootInitializer 添加到源代码中
-
-插件的主要组件包括：
-
-1. **KoinBootInitializerExtension**：用于配置插件的扩展
-2. **GenerateKoinBootInitializerTask**：生成 BootInitializer 的任务
-3. **KoinBootInitializerPlugin**：插件的主类
-
-插件的配置选项包括：
-
-1. **generatedPackage**：生成的 BootInitializer 的包名，默认为 "com.yy.myuko.generated"
-2. **generatedInitializerName**：生成的 BootInitializer 的名称，默认为 "AppBootInitializer"
-3. **include**：包含指定的依赖项
-4. **includes**：包含多个依赖项
-
-插件的使用方法：
+在你的项目build.gradle.kts文件中添加KoinBoot插件和相关组件依赖：
 
 ```kotlin
 plugins {
-    // 其他插件
+    kotlin("multiplatform")
+    id("com.android.library")
+    kotlin("plugin.serialization")
     `koin-boot-initializer`
 }
 
-val componentDependencies = listOf<Dependency>(
-    projects.component.kermit,
-    projects.component.multiplatformSettings,
-    projects.component.sentry,
-    projects.component.ktor,
+val bootDependencies = listOf<Dependency>(
+    projects.component.ktor,        // HTTP客户端
+    projects.component.kermit,      // 日志组件
+    projects.component.multiplatformSettings, // 配置存储
+    // 根据需要添加其他组件
 )
 
 koinBootInitializer {
-    includes(componentDependencies)
+    includes(bootDependencies)
+}
+
+dependencies {
+    bootDependencies.forEach(::commonMainApi)
 }
 ```
 
-插件会生成一个类似于以下的 BootInitializer：
+### 2. 使用KoinBoot启动应用
+
+在应用入口处使用`runKoinBoot`初始化：
 
 ```kotlin
-// 生成的 AppBootInitializer 示例
-/**
- * Auto-generated KoinBootInitializer
- * This file is automatically generated by a Gradle build script based on project dependencies.
- * Do not modify this file manually.
- *
- * Found BootInitializers from dependencies:
- * - [com.yy.myuko.KermitBootInitializer]
- * - [com.yy.myuko.MultiplatformSettingsBootInitializer]
- * - [com.yy.myuko.SentryBootInitializer]
- * - [com.yy.myuko.KtorBootInitializer]
- */
-val AppBootInitializer: KoinBootInitializer = {
-    KermitBootInitializer()
-    MultiplatformSettingsBootInitializer()
-    SentryBootInitializer()
-    KtorBootInitializer()
+fun main() {
+   val koin = runKoinBoot {
+      AppBootInitializer()
+      properties {
+         // kermit的严重等级会影响所有的日志，所以先设为Verbose
+         kermit_severity = Severity.Verbose
+         // app的日志级别设置的是koin容器的日志级别，设为DEBUG后会有详细依赖注入信息
+         app_logger_level = Level.DEBUG
+         // ktor的日志默认不开启
+         ktor_client_logging_enabled = true
+         // 设置ktor的日志默认将在控制台看到更多输出
+         ktor_client_logging_level = LogLevel.HEADERS
+      }
+      module {
+         // 可以自定义HttpClientEngine, 会自动覆盖默认的HttpClientEngine
+         // single<HttpClientEngine> { OkHttp.create() }
+
+         // 可以在默认的HttpClient中进行配置
+         single<HttpClientConfigDeclaration> {
+            println("call config declaration")
+            return@single { install(SSE) }
+         }
+      }
+   }
+
+   runBlocking {
+      // 已经自动默认配置好了HttpClient和引擎直接get
+      val response = koin.get<HttpClient>().get("https://ktor.io/docs/")
+      println("response.status: ${response.status}")
+      println("response.bodyAsText: ${response.bodyAsText()}")
+      println("done")
+   }
 }
 ```
 
-这个生成的 BootInitializer 会调用所有包含的依赖项中的 BootInitializer，从而实现自动装配。
+### 3. 开箱即用的功能
 
-## 适配第三方库的步骤
+- **自动装配**：无需手动初始化和配置各组件
+- **配置即代码**：通过properties块轻松配置所有组件
+- **约定优于配置**：提供合理默认值，仅需配置必要选项
+- **生命周期管理**：组件按正确顺序初始化和清理
 
-适配第三方库以支持 KoinBoot 自动装配通常包括以下步骤：
-
-### 步骤一：创建配置属性类
-
-首先，创建一个配置属性类来定义库的配置选项：
-
-```kotlin
-@KoinPropInstance("mylib")
-data class MyLibProperties(
-    val enabled: Boolean = true,
-    val timeout: Long = 30000,
-    // 其他配置选项
-) {
-    companion object {
-        const val MYLIB_ENABLED = "mylib.enabled"
-        const val MYLIB_TIMEOUT = "mylib.timeout"
-        // 其他常量
-    }
-}
-
-// 扩展属性，便于访问
-var KoinProperties.mylib_enabled: Boolean
-get() = (this[MyLibProperties.MYLIB_ENABLED] as Boolean?) ?: true
-set(value) {
-    MyLibProperties.MYLIB_ENABLED(value)
-}
-
-var KoinProperties.mylib_timeout: Long
-get() = (this[MyLibProperties.MYLIB_TIMEOUT] as Long?) ?: 30000
-set(value) {
-    MyLibProperties.MYLIB_TIMEOUT(value)
-}
-```
-
-配置属性类应该：
-
-1. 使用 `@KoinPropInstance` 注解，指定属性前缀
-2. 提供合理的默认值
-3. 定义常量表示属性名
-4. 提供扩展属性，便于访问
-
-### 步骤二：选择适配方式
-
-适配第三方库有两种主要方式：
-
-1. **使用 KoinAutoConfiguration**：适用于需要注册依赖项的库，如 Ktor、MultiplatformSettings
-2. **使用 KoinBootLifecycleExtender**：适用于需要在特定生命周期阶段执行初始化或清理的库，如 Sentry、Kermit
-
-选择哪种方式取决于库的特性和需求：
-
-- 如果库主要需要注册依赖项，使用 KoinAutoConfiguration
-- 如果库需要在特定生命周期阶段执行操作，使用 KoinBootLifecycleExtender
-- 如果两者都需要，可以同时使用两种方式
-
-### 步骤三：创建 BootInitializer
-
-最后，创建一个 BootInitializer 来注册你的自动配置或生命周期扩展器：
-
-```kotlin
-// 如果使用 KoinAutoConfiguration
-val MyLibBootInitializer: KoinBootInitializer = {
-    autoConfigurations(MyLibAutoConfiguration)
-}
-
-// 如果使用 KoinBootLifecycleExtender
-val MyLibBootInitializer: KoinBootInitializer = {
-    extenders(MyLibExtender())
-}
-
-// 如果两者都使用
-val MyLibBootInitializer: KoinBootInitializer = {
-    autoConfigurations(MyLibAutoConfiguration)
-    extenders(MyLibExtender())
-}
-```
-
-BootInitializer 应该：
-
-1. 在包级别可见，这样 koin-boot-initializer 插件才能找到它
-2. 使用库名作为前缀，如 `KtorBootInitializer`
-3. 注册自动配置或生命周期扩展器
-
-## 适配方式详解
-
-### 方式一：使用 KoinAutoConfiguration
-
-如果你选择使用 KoinAutoConfiguration，创建一个实现：
-
-```kotlin
-internal val MyLibAutoConfiguration = koinAutoConfiguration {
-    // 获取配置属性
-    val properties = koin.getPropInstance<MyLibProperties> { MyLibProperties() }
-
-    module {
-        // 用户没有配置 MyLibClient 的情况下，自动创建默认客户端
-        onMissInstances<MyLibClient> {
-            single<MyLibClient> {
-                MyLibClient(properties.timeout)
-            }
-        }
-
-        // 其他依赖项配置
-    }
-}
-```
-
-KoinAutoConfiguration 的实现应该：
-
-1. 获取配置属性
-2. 使用 `onMissInstances` 检查用户是否已经配置了组件
-3. 根据配置属性配置组件
-4. 注册依赖项
-
-`onMissInstances` 是一个辅助函数，用于检查用户是否已经配置了某个类型的实例。如果没有，它会执行提供的代码块。这确保了用户可以覆盖默认实现。
-
-### 方式二：使用 KoinBootLifecycleExtender
-
-如果你选择使用 KoinBootLifecycleExtender，创建一个实现：
-
-```kotlin
-class MyLibExtender : KoinBootLifecycleExtender {
-    override fun doConfiguring(context: KoinBootContext) = with(context) {
-        // 获取配置属性
-        val properties = properties.asPropInstance<MyLibProperties>() ?: MyLibProperties()
-
-        if (!properties.enabled) return@with
-
-        // 初始化库
-        initMyLib(properties)
-    }
-
-    private fun initMyLib(properties: MyLibProperties) {
-        // 初始化代码
-    }
-
-    override fun doStopping(context: KoinBootContext) {
-        // 清理代码
-    }
-}
-```
-
-KoinBootLifecycleExtender 的实现应该：
-
-1. 重写相关的生命周期方法
-2. 在 doConfiguring 方法中初始化组件
-3. 在 doStopping 方法中清理资源
-4. 检查配置属性，决定是否执行操作
-
-## 现有适配示例分析
-
-### Ktor 适配分析
-
-Ktor 使用 KoinAutoConfiguration 方式适配：
-
-1. **KtorProperties**：定义了 Ktor 客户端的配置选项，如超时、日志、重试等
-2. **KtorAutoConfiguration**：使用 koinAutoConfiguration 创建，配置 HttpClient 和相关组件
-3. **KtorBootInitializer**：注册 KtorAutoConfiguration
-
-```kotlin
-val KtorBootInitializer: KoinBootInitializer = {
-    autoConfigurations(KtorAutoConfiguration)
-}
-```
-
-Ktor 的适配特点：
-
-1. 提供了丰富的配置选项，如超时、日志、重试等
-2. 使用 `onMissInstances` 检查用户是否已经配置了 HttpClient、Json 等组件
-3. 根据配置属性配置 HttpClient 的各种插件
-4. 支持用户自定义 HttpClientEngine
-
-### Sentry 适配分析
-
-Sentry 使用 KoinBootLifecycleExtender 方式适配：
-
-1. **SentryProperties**：定义了 Sentry 的配置选项，如 DSN、环境、发布版本等
-2. **SentryExtender**：实现 KoinBootLifecycleExtender，在 doConfiguring 阶段初始化 Sentry
-3. **SentryBootInitializer**：注册 SentryExtender
-
-```kotlin
-val SentryBootInitializer: KoinBootInitializer = {
-    extenders(SentryExtender())
-}
-```
-
-Sentry 的适配特点：
-
-1. 在 doConfiguring 阶段初始化 Sentry
-2. 根据配置属性配置 Sentry
-3. 支持禁用 Sentry
-
-### MultiplatformSettings 适配分析
-
-MultiplatformSettings 使用 KoinAutoConfiguration 方式适配：
-
-1. **MultiplatformSettingsProperties**：定义了 MultiplatformSettings 的配置选项
-2. **MultiplatformSettingsAutoConfiguration**：使用 koinAutoConfiguration 创建，配置 Settings 和 Settings.Factory
-3. **MultiplatformSettingsBootInitializer**：注册 MultiplatformSettingsAutoConfiguration
-
-```kotlin
-val MultiplatformSettingsBootInitializer: KoinBootInitializer = {
-    autoConfigurations(MultiplatformSettingsAutoConfiguration)
-}
-```
-
-MultiplatformSettings 的适配特点：
-
-1. 提供了 Settings 和 Settings.Factory 的默认实现
-2. 支持用户自定义 Settings.Factory
-3. 根据配置属性配置 Settings
-
-### Kermit 适配分析
-
-Kermit 使用 KoinBootLifecycleExtender 方式适配：
-
-1. **KermitProperties**：定义了 Kermit 的配置选项
-2. **KermitExtender**：实现 KoinBootLifecycleExtender，配置 Kermit 日志
-3. **KermitBootInitializer**：注册 KermitExtender
-
-```kotlin
-val KermitBootInitializer: KoinBootInitializer = {
-    extenders(KermitExtender())
-}
-```
-
-Kermit 的适配特点：
-
-1. 在 doConfiguring 阶段配置 Kermit 日志
-2. 支持配置日志级别
-3. 支持添加日志记录器
-
-## 最佳实践
-
-1. **提供合理的默认值**：确保配置属性有合理的默认值，减少用户配置工作
-2. **使用 onMissInstances**：只在用户没有定义自己的实现时提供默认实现
-3. **考虑平台特异性**：对于多平台库，使用 expect/actual 处理平台特异性代码
-4. **文档化配置选项**：清晰地文档化所有配置选项及其默认值
-5. **遵循命名约定**：使用一致的命名约定，如 `<库名>Properties`、`<库名>AutoConfiguration`、`<库名>Extender`、
-   `<库名>BootInitializer`
-6. **模块化设计**：将功能分解为小的、可组合的模块
-7. **测试适配代码**：编写测试确保适配代码在各种情况下都能正常工作
-8. **考虑条件配置**：使用 match() 方法根据条件决定是否应用配置
-9. **注意配置顺序**：使用 order 属性控制配置的顺序
-10. **提供扩展点**：允许用户扩展你的适配代码
-
-## 常见问题解答
-
-### Q: 如何选择适配方式？
-
-A: 选择适配方式取决于库的特性和需求：
-
-- 如果库主要需要注册依赖项，使用 KoinAutoConfiguration
-- 如果库需要在特定生命周期阶段执行操作，使用 KoinBootLifecycleExtender
-- 如果两者都需要，可以同时使用两种方式
-
-### Q: 如何处理平台特异性代码？
-
-A: 对于多平台库，使用 expect/actual 处理平台特异性代码：
-
-```kotlin
-// 在 commonMain 中
-expect fun createPlatformSpecificComponent(properties: MyLibProperties): MyLibComponent
-
-// 在 androidMain 中
-actual fun createPlatformSpecificComponent(properties: MyLibProperties): MyLibComponent {
-    // Android 特异性实现
-}
-
-// 在 iosMain 中
-actual fun createPlatformSpecificComponent(properties: MyLibProperties): MyLibComponent {
-    // iOS 特异性实现
-}
-```
-
-### Q: 如何测试适配代码？
-
-A: 编写测试确保适配代码在各种情况下都能正常工作：
-
-```kotlin
-class MyLibAutoConfigurationTest {
-    @Test
-    fun testDefaultConfiguration() {
-        // 测试默认配置
-        val koin = startKoin {
-            modules(module {
-                // 空模块
-            })
-        }.koin
-
-        // 执行自动配置
-        val configModules = Module()
-        val scope = KoinAutoConfigurationScope(configModules, koin)
-        with(MyLibAutoConfiguration) {
-            scope.configure()
-        }
-
-        koin.loadModules(listOf(configModules))
-
-        // 验证结果
-        val client = koin.get<MyLibClient>()
-        assertEquals(30000, client.timeout)
-    }
-
-    @Test
-    fun testCustomConfiguration() {
-        // 测试自定义配置
-        val koin = startKoin {
-            modules(module {
-                single<MyLibClient> {
-                    MyLibClient(60000)
-                }
-            })
-        }.koin
-
-        // 执行自动配置
-        val configModules = Module()
-        val scope = KoinAutoConfigurationScope(configModules, koin)
-        with(MyLibAutoConfiguration) {
-            scope.configure()
-        }
-
-        koin.loadModules(listOf(configModules))
-
-        // 验证结果
-        val client = koin.get<MyLibClient>()
-        assertEquals(60000, client.timeout)
-    }
-}
-```
-
-### Q: 如何处理依赖项之间的关系？
-
-A: 使用 order 属性控制配置的顺序，确保依赖项按正确的顺序初始化：
-
-```kotlin
-val MyLibAutoConfiguration = koinAutoConfiguration(order = 100) {
-    // 配置逻辑
-}
-
-val MyOtherLibAutoConfiguration = koinAutoConfiguration(order = 200) {
-    // 配置逻辑，依赖于 MyLibAutoConfiguration
-}
-```
-
-数字越小优先级越高，所以 MyLibAutoConfiguration 会在 MyOtherLibAutoConfiguration 之前执行。
+## 更多: [指南](GUIDE.md)

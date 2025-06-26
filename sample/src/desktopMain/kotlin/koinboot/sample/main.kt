@@ -35,7 +35,7 @@ fun main() {
 
             // 可以在默认的HttpClient中进行配置
             single<HttpClientConfigDeclaration> {
-                println("apply config declaration")
+                println("call config declaration")
                 return@single { install(SSE) }
             }
         }
