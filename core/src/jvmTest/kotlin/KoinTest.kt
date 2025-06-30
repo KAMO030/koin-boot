@@ -1,7 +1,7 @@
 package com.yy.myuko.component.koin.test
 
-import com.yy.myuko.component.koin.configuration.*
-import com.yy.myuko.component.koin.runKoinBoot
+import io.github.kamo030.koinboot.core.configuration.*
+import io.github.kamo030.koinboot.core.runKoinBoot
 import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
