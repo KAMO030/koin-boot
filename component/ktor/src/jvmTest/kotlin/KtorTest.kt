@@ -72,7 +72,7 @@ class KtorTest {
         }
         val koin = runKoinBoot {
             KtorBootInitializer()
-            modules(module {
+            module {
                 single<HttpClientConfigDeclaration> {
                     {
                         defaultRequest {
@@ -82,7 +82,7 @@ class KtorTest {
 
                 }
                 single<HttpClientEngine> { mockEngine }
-            })
+            }
         }
 
         launch {

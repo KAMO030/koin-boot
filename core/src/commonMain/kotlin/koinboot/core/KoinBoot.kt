@@ -19,7 +19,7 @@ class KoinBoot {
         context.addAutoConfigurations(*configurations)
     }
 
-    fun withLifecycleExtender(vararg extenders: KoinBootLifecycleExtender): KoinBoot = apply {
+    fun withLifecycleExtender(vararg extenders: KoinLifecycleExtender): KoinBoot = apply {
         context.addLifecycleExtender(*extenders)
     }
 
@@ -34,16 +34,16 @@ class KoinBoot {
     private fun KoinApplication.doStart(appDeclaration: KoinAppDeclaration = {}) {
         context.application = this
         // 阶段1: 配置阶段
-        context.executePhase(KoinBootPhase.Configuring) {
+        context.executePhase(KoinPhase.Configuring) {
             appDeclaration()
             context.kermitLogger()
         }
         // 阶段2: 属性加载阶段
-        context.executePhase(KoinBootPhase.PropertiesLoading) {
+        context.executePhase(KoinPhase.PropertiesLoading) {
             context.loadProperties()
         }
         // 阶段3: 自动配置阶段
-        context.executePhase(KoinBootPhase.ModulesLoading) {
+        context.executePhase(KoinPhase.ModulesLoading) {
             context.loadModules()
         }
     }
@@ -51,7 +51,7 @@ class KoinBoot {
     // 启动方法
     fun run(appDeclaration: KoinAppDeclaration = {}): KoinBootContext {
         // 阶段0: 启动
-        context.executePhase(KoinBootPhase.Starting) {
+        context.executePhase(KoinPhase.Starting) {
             if (started) throw IllegalStateException("KoinBoot already started")
         }
 
@@ -59,10 +59,10 @@ class KoinBoot {
             startKoin { doStart(appDeclaration) }
         }.onSuccess {
             // 阶段4: 就绪阶段
-            context.executePhase(KoinBootPhase.Ready)
+            context.executePhase(KoinPhase.Ready)
 
             // 阶段5: 运行阶段
-            context.executePhase(KoinBootPhase.Running) {
+            context.executePhase(KoinPhase.Running) {
                 started = true
             }
         }.onFailure { exception ->
@@ -75,11 +75,11 @@ class KoinBoot {
     fun stop() {
         if (!started) return
 
-        context.executePhase(KoinBootPhase.Stopping) {
+        context.executePhase(KoinPhase.Stopping) {
             context.application.close()
         }
 
-        context.executePhase(KoinBootPhase.Stopped) {
+        context.executePhase(KoinPhase.Stopped) {
             started = false
         }
     }
@@ -97,7 +97,7 @@ class KoinBootDSL(
         this.appDeclaration = appDeclaration
     }
 
-    fun extenders(vararg extenders: KoinBootLifecycleExtender) {
+    fun extenders(vararg extenders: KoinLifecycleExtender) {
         koinBoot.withLifecycleExtender(*extenders)
     }
 

@@ -4,6 +4,7 @@ plugins {
     kotlin("plugin.serialization")
     `mpp-lib-targets`
     `koin-boot-initializer`
+//    alias(libs.plugins.sentry)
 }
 
 val bootDependencies = listOf<Dependency>(

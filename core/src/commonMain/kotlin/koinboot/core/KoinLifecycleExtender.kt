@@ -1,7 +1,7 @@
 package io.github.kamo030.koinboot.core
 
 // 生命周期阶段枚举
-enum class KoinBootPhase {
+enum class KoinPhase {
     Starting,
     Configuring,
     ModulesLoading,
@@ -18,17 +18,17 @@ enum class KoinBootPhase {
  *
  */
 
-interface KoinBootLifecycleExtender {
-    fun doPhaseChange(phase: KoinBootPhase, context: KoinBootContext) {
+interface KoinLifecycleExtender {
+    fun doPhaseChange(phase: KoinPhase, context: KoinBootContext) {
         val call = when (phase) {
-            KoinBootPhase.Starting -> ::doStarting
-            KoinBootPhase.Configuring -> ::doConfiguring
-            KoinBootPhase.PropertiesLoading -> ::doPropertiesLoading
-            KoinBootPhase.ModulesLoading -> ::doModulesLoading
-            KoinBootPhase.Ready -> ::doReady
-            KoinBootPhase.Running -> ::doRunning
-            KoinBootPhase.Stopping -> ::doStopping
-            KoinBootPhase.Stopped -> ::doStopped
+            KoinPhase.Starting -> ::doStarting
+            KoinPhase.Configuring -> ::doConfiguring
+            KoinPhase.PropertiesLoading -> ::doPropertiesLoading
+            KoinPhase.ModulesLoading -> ::doModulesLoading
+            KoinPhase.Ready -> ::doReady
+            KoinPhase.Running -> ::doRunning
+            KoinPhase.Stopping -> ::doStopping
+            KoinPhase.Stopped -> ::doStopped
         }
         call(context)
     }

@@ -32,6 +32,6 @@ include(":core")
 include(":component:ktor")
 include(":component:kermit")
 include(":component:multiplatform-settings")
+//include(":component:sentry")
 
 include(":sample")
-//include(":component:sentry")

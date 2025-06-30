@@ -9,9 +9,9 @@ import org.koin.core.module.Module
 
 class KoinBootContext {
 
-    private var _phase: KoinBootPhase = KoinBootPhase.Starting
+    private var _phase: KoinPhase = KoinPhase.Starting
 
-    private val extenders = mutableListOf<KoinBootLifecycleExtender>()
+    private val extenders = mutableListOf<KoinLifecycleExtender>()
 
     /**
      * [io.github.kamo030.koinboot.core.KoinBoot.run] 方法中锁定住的扩展器集合保证数量和顺序不变
@@ -27,22 +27,22 @@ class KoinBootContext {
 
     lateinit var application: KoinApplication
 
-    val phase: KoinBootPhase get() = _phase
+    val phase: KoinPhase get() = _phase
 
     val koin: Koin get() = application.koin
 
     val logger = Logger.withTag("KoinBoot")
 
     // 生命周期管理
-    fun addLifecycleExtender(vararg extenders: KoinBootLifecycleExtender) {
+    fun addLifecycleExtender(vararg extenders: KoinLifecycleExtender) {
         this.extenders.addAll(extenders)
     }
 
-    fun removeLifecycleExtender(vararg extenders: KoinBootLifecycleExtender) {
+    fun removeLifecycleExtender(vararg extenders: KoinLifecycleExtender) {
         this.extenders.removeAll(extenders)
     }
 
-    private fun changePhase(newPhase: KoinBootPhase) {
+    private fun changePhase(newPhase: KoinPhase) {
         _phase = newPhase
         immutableExtenders.forEach { extender ->
             runCatching { extender.doPhaseChange(newPhase, this) }
@@ -81,7 +81,7 @@ class KoinBootContext {
         this.modules.addAll(modules)
     }
 
-    internal fun executePhase(phase: KoinBootPhase, action: () -> Unit = {}) {
+    internal fun executePhase(phase: KoinPhase, action: () -> Unit = {}) {
         changePhase(phase)
         runCatching(action)
             .onFailure { e -> logger.e(e) { "Error in phase $phase" } }

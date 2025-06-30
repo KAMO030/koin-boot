@@ -2,9 +2,9 @@ package io.github.kamo030.koinboot.component.kermit
 
 import co.touchlab.kermit.Logger
 import io.github.kamo030.koinboot.core.KoinBootContext
-import io.github.kamo030.koinboot.core.KoinBootLifecycleExtender
+import io.github.kamo030.koinboot.core.KoinLifecycleExtender
 
-class KermitExtender : KoinBootLifecycleExtender {
+class KermitExtender : KoinLifecycleExtender {
     override fun doConfiguring(context: KoinBootContext) = with(context) {
         val severity = properties.kermit_severity
         Logger.setMinSeverity(severity)
