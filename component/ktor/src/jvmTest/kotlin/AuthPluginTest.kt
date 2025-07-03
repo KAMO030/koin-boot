@@ -30,36 +30,35 @@ class AuthPluginTest {
     fun `test Auth plugin installation with providers`() = runTest {
         // 设置Koin环境并提供AuthProvider
         val koin = runKoinBoot {
-           KtorBootInitializer()
-            modules(
-                module {
-                    // 注册模拟引擎
-                    single<HttpClientEngine> {
-                        MockEngine { request ->
-                            // 验证Authorization头是否存在
-                            val authHeader = request.headers[HttpHeaders.Authorization]
-                            logger.info("Authorization header: $authHeader")
-                            respond(
-                                content = "Response",
-                                status = HttpStatusCode.OK,
-                                headers = headersOf("X-Auth-Present", authHeader?.let { "true" } ?: "false"),
-                            )
-                        }
-                    }
-                    // 注册模拟的AuthProvider
-                    single<AuthProvider> {
-                        BearerAuthProvider(
-                            refreshTokens = {
-                                // 模拟刷新令牌逻辑
-                                BearerTokens("new-access-token", "new-refresh-token")
-                            },
-                            loadTokens = { BearerTokens("new-access-token", "new-refresh-token") },
-                            sendWithoutRequestCallback = { true },
-                            realm = "My Realm"
+            KtorBootInitializer()
+            module {
+                // 注册模拟引擎
+                single<HttpClientEngine> {
+                    MockEngine { request ->
+                        // 验证Authorization头是否存在
+                        val authHeader = request.headers[HttpHeaders.Authorization]
+                        logger.info("Authorization header: $authHeader")
+                        respond(
+                            content = "Response",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf("X-Auth-Present", authHeader?.let { "true" } ?: "false"),
                         )
                     }
                 }
-            )
+                // 注册模拟的AuthProvider
+                single<AuthProvider> {
+                    BearerAuthProvider(
+                        refreshTokens = {
+                            // 模拟刷新令牌逻辑
+                            BearerTokens("new-access-token", "new-refresh-token")
+                        },
+                        loadTokens = { BearerTokens("new-access-token", "new-refresh-token") },
+                        sendWithoutRequestCallback = { true },
+                        realm = "My Realm"
+                    )
+                }
+            }
+
         }
 
 
