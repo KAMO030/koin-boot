@@ -10,22 +10,20 @@ import org.koin.core.qualifier.Qualifier
 import org.koin.core.qualifier.TypeQualifier
 
 
-fun Koin.hasInstance(vararg qualifiers: Qualifier): Boolean {
-    if (qualifiers.isEmpty()) return true
-    return instanceRegistry.instances.values
-        .any { factory ->
-            val beanDefinition = factory.beanDefinition
-            if (beanDefinition.kind == Kind.Scoped) return@any false
-            qualifiers.all { qualifier ->
-                if (qualifier is TypeQualifier) {
-                    return@all qualifier.type == beanDefinition.primaryType || beanDefinition.secondaryTypes.contains(
-                        qualifier.type
-                    )
-                }
-                return beanDefinition.qualifier?.value == qualifier.value
+fun Koin.hasInstance(vararg qualifiers: Qualifier): Boolean =
+    if (qualifiers.isEmpty()) instanceRegistry.instances.isNotEmpty()
+    else instanceRegistry.instances.values
+        .map { it.beanDefinition }
+        .any { beanDefinition ->
+            if (beanDefinition.kind == Kind.Scoped) false
+            else qualifiers.all { qualifier ->
+                if(qualifier is TypeQualifier)
+                    qualifier.type == beanDefinition.primaryType
+                            || beanDefinition.secondaryTypes.contains(qualifier.type)
+                else beanDefinition.qualifier?.value == qualifier.value
             }
         }
-}
+
 
 fun Koin.hasProperties(vararg keys: String): Boolean = keys.all { getProperty<Any>(it) != null }
 
