@@ -151,11 +151,13 @@ startKoin {
 ```
 
 **第二步：提供人性化的 DSL 写法**
+
 ![img.png](img.png)
 
 利用语言特性重写String.invoke操作符,像写 JSON 一样优雅，自动打平存储
 
 框架在底层会自动把它拍平变成: a.b.c=v
+
 ![img_1.png](img_1.png)
 
 ```kotlin
@@ -226,6 +228,7 @@ data class Logging(
 基于Kotlin Serialization序列化使用`@KoinPropInstance( = "name1.name2")`注解标注配置类并使用preKey来标明序列化开始的层级。
 
 ![img_4.png](img_4.png)
+
 ![img_5.png](img_5.png)
 
 通过这套组合拳，我们实现了**类型安全、有代码提示、写法优雅**的配置方案，彻底告别了配置管理的混乱。
@@ -585,4 +588,5 @@ fun main() {
 
 最终，我们达成了构建**高效、灵活、易维护的多平台脚手架**的目标，让每个模块都成为可插拔的智能组件！
 
-#KotlinMultiplatform #DependencyInjection #KoinBoot #自动化开发
+* [KotlinMultiplatform](https://kotlinlang.org/docs/multiplatform.html)
+* [Koin](https://insert-koin.io/)
