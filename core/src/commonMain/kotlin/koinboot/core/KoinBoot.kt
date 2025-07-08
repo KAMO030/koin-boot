@@ -6,7 +6,7 @@ import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
-import org.koin.dsl.ModuleDeclaration
+import org.koin.mp.KoinPlatform.stopKoin
 
 typealias KoinBootInitializer = KoinBootDSL.() -> Unit
 
@@ -31,59 +31,61 @@ class KoinBoot {
         context.addModules(*modules)
     }
 
-    private fun KoinApplication.doStart(appDeclaration: KoinAppDeclaration = {}) {
-        context.application = this
+    private fun KoinApplication.doStart(appDeclaration: KoinAppDeclaration = {}) = context.apply {
+        application = this@doStart
         // 阶段1: 配置阶段
-        context.executePhase(KoinPhase.Configuring) {
+        executePhase(KoinPhase.Configuring) {
             appDeclaration()
-            context.kermitLogger()
+            kermitLogger()
         }
         // 阶段2: 属性加载阶段
-        context.executePhase(KoinPhase.PropertiesLoading) {
-            context.loadProperties()
+        executePhase(KoinPhase.PropertiesLoading) {
+            loadProperties()
         }
         // 阶段3: 自动配置阶段
-        context.executePhase(KoinPhase.ModulesLoading) {
-            context.loadModules()
+        executePhase(KoinPhase.ModulesLoading) {
+            loadModules()
         }
     }
 
     // 启动方法
-    fun run(appDeclaration: KoinAppDeclaration = {}): KoinBootContext {
-        // 阶段0: 启动
-        context.executePhase(KoinPhase.Starting) {
-            if (started) throw IllegalStateException("KoinBoot already started")
-        }
-
+    fun run(appDeclaration: KoinAppDeclaration = {}): KoinBootContext = context.apply {
         runCatching {
+            // 阶段0: 启动
+            executePhase(KoinPhase.Starting) {
+                if (started) throw IllegalStateException("KoinBoot already started")
+            }
             startKoin { doStart(appDeclaration) }
-        }.onSuccess {
+        }.mapCatching {
             // 阶段4: 就绪阶段
-            context.executePhase(KoinPhase.Ready)
+            executePhase(KoinPhase.Ready)
 
             // 阶段5: 运行阶段
-            context.executePhase(KoinPhase.Running) {
+            executePhase(KoinPhase.Running) {
                 started = true
             }
+
         }.onFailure { exception ->
+            logger.e(exception) { "Failed to run KoinBoot, current phase: ${context.phase}" }
             stop()
-            throw KoinBootException("Failed to start KoinBoot", exception)
-        }
-        return context
+        }.getOrThrow()
     }
 
-    fun stop() {
-        if (!started) return
+    fun stop() = context.apply {
+        runCatching {
+            if (!started) return@runCatching
 
-        context.executePhase(KoinPhase.Stopping) {
-            context.application.close()
-        }
+            executePhase(KoinPhase.Stopping) {
+                stopKoin()
+            }
 
-        context.executePhase(KoinPhase.Stopped) {
-            started = false
+            executePhase(KoinPhase.Stopped) {
+                started = false
+            }
+        }.onFailure { exception ->
+            logger.e(exception) { "Failed to stop KoinBoot, current phase: ${context.phase}" }
         }
     }
-
 }
 
 class KoinBootDSL(
@@ -103,10 +105,6 @@ class KoinBootDSL(
 
     fun modules(vararg modules: Module) {
         koinBoot.withModules(*modules)
-    }
-
-    fun module(moduleDeclaration: ModuleDeclaration) {
-        koinBoot.withModules(Module().apply(moduleDeclaration))
     }
 
     fun autoConfigurations(vararg configurations: KoinAutoConfiguration) {

@@ -82,7 +82,6 @@ fun Koin.declareProperties(properties: KoinProperties) =
     declare(properties, ManagedKoinProperties)
 
 
-
 /**
  * 从 Koin 容器中检索属性，并将其反序列化为一个类型为 [T] 的对象实例。
  *
@@ -126,7 +125,10 @@ inline fun <reified T> Koin.getPropInstance(preKey: String? = null, default: () 
  * @return 一个填充了属性值的 [T] 的新实例。
  */
 inline fun <reified T> Map<String, Any>.asPropInstance(preKey: String? = null): T? {
-    val preKey = preKey ?: serializer<T>().descriptor.annotations.filterIsInstance<KoinPropInstance>().first().preKey
+    val preKey = preKey ?: serializer<T>().descriptor.annotations
+        .filterIsInstance<KoinPropInstance>()
+        .firstOrNull()?.preKey ?: ""
+
     val instanceProperties =
         if (preKey.isEmpty()) {
             this
@@ -148,7 +150,6 @@ inline fun <reified T> Map<String, Any>.asPropInstance(preKey: String? = null): 
     }
     return Json.decodeFromJsonElement(jsonElement)
 }
-
 
 
 /**
