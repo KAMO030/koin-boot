@@ -290,7 +290,7 @@ class KoinBoot {
     // 调用扩展器
     // 最终启动Koin
 }
-typealias KoinBootInitializer = KoinBootDSLUnit
+typealias KoinBootInitializer = KoinBootDSL.() -> Unit
 
 fun runKoinBoot(
     initializer: KoinBootInitializer
