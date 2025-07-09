@@ -6,6 +6,7 @@ import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
+import org.koin.dsl.ModuleDeclaration
 import org.koin.mp.KoinPlatform.stopKoin
 
 typealias KoinBootInitializer = KoinBootDSL.() -> Unit
@@ -105,6 +106,10 @@ class KoinBootDSL(
 
     fun modules(vararg modules: Module) {
         koinBoot.withModules(*modules)
+    }
+
+    fun module(moduleDeclaration: ModuleDeclaration) {
+        koinBoot.withModules(Module().apply(moduleDeclaration))
     }
 
     fun autoConfigurations(vararg configurations: KoinAutoConfiguration) {

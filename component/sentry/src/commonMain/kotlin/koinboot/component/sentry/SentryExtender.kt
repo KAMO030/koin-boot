@@ -31,4 +31,9 @@ class SentryExtender : KoinBootLifecycleExtender {
             scope.setTag("arch", platform.arch.name)
         }
     }
+
+
+    override fun doStopped(context: KoinBootContext) {
+        Sentry.close()
+    }
 }
