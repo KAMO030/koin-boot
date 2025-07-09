@@ -23,21 +23,13 @@ Koin 是一个优秀的依赖注入框架，但在实际企业级开发中，我
 #### 1. **智能配置系统** - 告别硬编码
 
 ```kotlin
-// ❌ 传统方式：配置分散在各个模块中，难以统一管理
+// ❌ 传统方式：配置散落，难以维护
 val networkModule = module {
     single<HttpClient> {
         HttpClient {
             install(HttpTimeout) {
-                requestTimeoutMillis = 10_000  // 分散配置
+                requestTimeoutMillis = 10_000  // 硬编码，不够灵活
             }
-        }
-    }
-}
-
-val logModule = module {
-    single<Logger> {
-        Logger.withTag("APP").apply {
-            setMinSeverity(Severity.Info)  // 又一个分散配置
         }
     }
 }
