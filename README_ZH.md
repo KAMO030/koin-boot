@@ -23,21 +23,39 @@ Koin 是一个优秀的依赖注入框架，但在实际企业级开发中，我
 #### 1. **智能配置系统** - 告别硬编码
 
 ```kotlin
-// ❌ 传统方式：配置散落，难以维护
+// ❌ 传统方式：配置分散在各个模块中，难以统一管理
 val networkModule = module {
     single<HttpClient> {
         HttpClient {
             install(HttpTimeout) {
-                requestTimeoutMillis = 10_000  // 硬编码，不够灵活
+                requestTimeoutMillis = 10_000  // 分散配置
             }
         }
     }
 }
 
-// ✅ KoinBoot 方式：类型安全，智能提示
-properties {
-    ktor_client_timeout_request = 30000L  // 智能提示
-    ktor_client_logging_enabled = true    // 类型安全
+val logModule = module {
+    single<Logger> {
+        Logger.withTag("APP").apply {
+            setMinSeverity(Severity.Info)  // 又一个分散配置
+        }
+    }
+}
+
+// ✅ KoinBoot 方式：统一配置管理，按需配置
+runKoinBoot {
+    properties {
+        // 统一配置入口，智能提示
+        ktor_client_timeout_request = 30000L
+        ktor_client_logging_enabled = true
+        // set 时类型约束
+        kermit_severity = Severity.Verbose
+
+        // 只有引入对应模块时才有这些配置项
+        // 移除模块依赖，配置项自动消失
+    }
+    // 所有模块自动根据统一配置进行初始化和注入
+    AppBootInitializer()
 }
 ```
 

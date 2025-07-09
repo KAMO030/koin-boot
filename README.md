@@ -24,21 +24,39 @@ powerful "engine" rather than a "car" that can be used directly. KoinBoot was bo
 #### 1. **Intelligent Configuration System** - Say Goodbye to Hard Coding
 
 ```kotlin
-// ❌ Traditional approach: scattered configurations, hard to maintain
+// ❌ Traditional approach: configurations scattered across modules, difficult to manage uniformly
 val networkModule = module {
-    single<HttpClient> {
-        HttpClient {
-            install(HttpTimeout) {
-                requestTimeoutMillis = 10_000  // Hard-coded, not flexible
-            }
-        }
+  single<HttpClient> {
+    HttpClient {
+      install(HttpTimeout) {
+        requestTimeoutMillis = 10_000  // Scattered configuration
+      }
     }
+  }
 }
 
-// ✅ KoinBoot approach: type-safe, intelligent hints
-properties {
-    ktor_client_timeout_request = 30000L  // Intelligent hints
-    ktor_client_logging_enabled = true    // Type-safe
+val logModule = module {
+  single<Logger> {
+    Logger.withTag("APP").apply {
+      setMinSeverity(Severity.Info)  // Another scattered configuration
+    }
+  }
+}
+
+// ✅ KoinBoot approach: unified configuration management, configure as needed
+runKoinBoot {
+  properties {
+    // Unified configuration entry point with intelligent hints
+    ktor_client_timeout_request = 30000L
+    ktor_client_logging_enabled = true
+    kermit_severity = Severity.Verbose
+
+    // These configuration items only appear when corresponding modules are introduced
+    // Configuration items automatically disappear when module dependencies are removed
+  }
+
+  // All modules automatically initialize and inject based on a unified configuration
+  AppBootInitializer()
 }
 ```
 
