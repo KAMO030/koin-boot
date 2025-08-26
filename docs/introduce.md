@@ -1,179 +1,187 @@
-# KoinBoot: Solving Pain Points in Real-World Koin Usage
+# KoinBoot: Solving the Pain Points of Using Koin in Practice
 
-> An application framework based on Koin, focused on solving configuration management, lifecycle, and module assembly problems in enterprise-level development
+> An application framework built on Koin, focused on solving configuration management, lifecycle, and module wiring issues in enterprise development
 
-## Background: From Reinventing the Wheel to Unified Architecture
+## Background: From Rebuilding the Wheel to a Unified Architecture
 
-Hi My name is Kamo, and I'm a Kotlin development engineer. In our company's projects, we encountered a very common problem: every new project had to rebuild similar tech stacks—network layer, logging, caching, and other infrastructure. Different projects used different technology choices, making maintenance costs very high.
+I’m Kamo, a Kotlin engineer. In our company’s projects, we often face a recurring problem:
+Every new project requires re‑establishing similar infrastructure such as networking, logging, and caching.
+Different projects choose different technical stacks, which drives up operations and maintenance costs later on.
 
-To solve this problem, we decided to pause our current business development and focus on building a unified technical scaffold. We chose KMP as the cross-platform solution and used Koin to manage dependency injection.
+To address this, we paused new business development and focused on building a unified technical scaffold.
+We chose Kotlin Multiplatform (KMP) for cross‑platform development and used Koin for dependency injection.
+With Koin, we hoped to make foundational components plug‑and‑play like building blocks so developers could quickly assemble applications by picking what they need.
 
-Our goal was simple: **make basic components as flexible as building blocks, allowing developers to select what they need and quickly build stable applications**.
+## First Look at Koin: Great, but With Limits
 
-## First Encounter with Koin: Excellent but Limited
+### How Koin Works at Its Core
 
-### Core Working Principle of Koin
-
-Before diving into the problems, let me briefly introduce how Koin works. Many people might think dependency injection is complex, but Koin's design philosophy is simple:
+Before diving deeper, here’s Koin’s design idea in one sentence: it treats the dependency injection container as a configurable registry.
+Developers define dependencies in modules, register these modules into the DI container at app startup, and fetch instances from it at runtime as needed.
 
 ```kotlin
 // Basic usage of Koin
 val appModule = module {
-    single { HttpClient() }
-    single { UserRepository(get()) }
-    factory { UserViewModel(get()) }
+   single { HttpClient() }
+   single { UserRepository(get()) }
+   factory { UserViewModel(get()) }
 }
 
 startKoin {
-    modules(appModule)
+   modules(appModule)
 }
 
-// When using
-val httpClient = koin.get<HttpClient>()
+// Retrieve instances from the container when needed
+val httpClient: HttpClient = koin.get()
 ```
 
-**The essence of Koin is actually a smart Map**:
+> Simply put, Koin doesn’t use reflection to instantiate objects. Instead, it encapsulates object creation logic in a queryable Map. At runtime, a unique key is used to retrieve the corresponding instance.
 
 ```kotlin
 inline fun indexKey(
-    clazz: KClass<*>, typeQualifier: Qualifier?, scopeQualifier: Qualifier
+   clazz: KClass<*>, typeQualifier: Qualifier?, scopeQualifier: Qualifier
 ): String {
-    return buildString {
-        append(clazz.getFullName())
-        append(':')
-        append(typeQualifier?.value ?: "")
-        append(':')
-        append(scopeQualifier)
-    }
+   return buildString {
+      append(clazz.getFullName())
+      append(':')
+      append(typeQualifier?.value ?: "")
+      append(':')
+      append(scopeQualifier)
+   }
 }
 ```
 
+The key can be summarized as:
 ```
 Type + Name + Scope = Key → Map<Key, InstanceFactory> → get<T>()
 ```
 
-When you define `single<HttpClient>(named("client"))`, Koin will:
-1. Generate a Key (based on type: `HttpClient`, name: `"client"`, scope: defaults to `__root__` when not defined)
-2. Store this Key and the corresponding instance factory in the Map
-3. When calling `get<HttpClient>(named("client"))`, use the same method to generate the Key and look it up in the Map
+- Type: The declared type of the instance (defaults to the type inferred from generics)
+- Name: The declared name of the instance (e.g., `named("...")`; none by default)
+- Scope: Scope, defaulting to the global `__root__` scope
+
+When you define `single<HttpClient>(named("client"))`, Koin does the following internally:
+
+1) Generates a key based on the type `HttpClient`, the name `"client"`, and the default `__root__` scope.
+
+2) Stores this key and the corresponding instance factory function into an internal Map.
+
+3) When `get<HttpClient>(named("client"))` is called, Koin generates the same key and looks up the factory in the Map to create or return the instance.
 
 ### Why Choose Koin
 
-1. **Lightweight**: No reflection, excellent performance
-2. **Pure**: Focused on dependency injection, simple and understandable
-3. **Kotlin First**: Friendly syntax, elegant DSL
-4. **Cross-platform**: Perfect KMP support
+- Lightweight: avoids reflection with stable performance
+- Purist: focuses on DI; low barrier to entry, quick to adopt
+- Kotlin‑first: designed for Kotlin; friendly syntax with expressive DSL
+- Cross‑platform: friendly to KMP
 
-It looks perfect, but in actual usage...
+This looks ideal in theory, but deeper usage reveals some trade‑offs and issues to solve.
 
-## Discovering Problems: Three Limitations of Koin
+## Problems Discovered: Three Limitations of Koin
 
-After deep usage of Koin, we found that while it's excellent as a dependency injection library, it still has gaps from our requirements:
+As we used Koin more deeply, we realized that while it has unique advantages as a lightweight DI library, it exposes pain points in complex scenarios.
 
-### 1. Configuration Management Difficulties
+### 1) Difficult Configuration Management
 
-**Problem scenario**: The scaffold provides a default network module, but different projects need different timeout values.
+Problem scenario: The scaffold provides a default networking module, but different projects require different network timeouts.
 
 ```kotlin
-// Current situation: Can only modify source code to adapt to different projects
+// Status quo: modifying source code is the only way to adapt to different projects
 val networkModule = module {
-    single<HttpClient> {
-        HttpClient {
-            install(HttpTimeout) {
-                // Hard-coded configuration, cannot be dynamically adjusted
-                // What if Project A needs 10 seconds, Project B needs 15 seconds?
-                requestTimeoutMillis = 10_000
-                // or
-                // Type unsafe when setting: don't know what type is being put in
-                connectTimeoutMillis = getProperty("ktor.client.timeout.request")
-            }
-        }
-    }
+   single<HttpClient> {
+      HttpClient {
+         install(HttpTimeout) {
+            // Hard‑coded configuration; can’t be adjusted dynamically
+            // Project A needs 10s, project B needs 15s — what to do?
+            requestTimeoutMillis = 10_000
+            // or
+            // getProperty<T>() lacks type safety; you can’t be sure what type is returned
+            connectTimeoutMillis = getProperty("ktor.client.timeout.request")
+         }
+      }
+   }
 }
 ```
 
-This approach has single configuration sources, cannot be dynamically adjusted, scattered across modules making maintenance difficult, and violates the open-closed principle - every project needs to modify framework code.
+This approach has several problems: configuration sources are single‑sourced, can’t be adjusted dynamically, and are scattered across modules, making them hard to maintain. It violates the open‑closed principle and forces every new project to modify the scaffold’s source code.
 
-### 2. Lack of Lifecycle Management
+### 2) Missing Lifecycle Management
 
-**Problem scenario**: Application startup needs strict order control, like error monitoring must initialize first.
+Problem scenario: Component initialization at app startup needs strict ordering. For example, error monitoring (e.g., `Sentry`) must initialize before all other modules.
 
-> Sentry must initialize before all modules, background services should start only after everything is ready. But in Koin, you can only manually stack code before and after `startKoin`
+> Sentry must be ready at the very beginning of app startup, while back‑end services should start only after everything is prepared. But with Koin, we can only pile initialization code around the `startKoin` call manually.
+
+> Note: The lifecycle here refers to the container lifecycle, not Android’s lifecycle.
 
 ```kotlin
-// Current situation: Chaotic startup logic, hard to maintain
+// Status quo: startup logic is messy and hard to maintain
 fun main() {
     // Manually initialize various services
     Sentry.init { dsn = "..." }
-    
+
     val koin = startKoin {
         modules(appModule)
     }
-    
+
     // Manually start background services
     backgroundService.start()
-    
-    // As the project becomes complex, this becomes unmaintainable code
+
+    // As the project grows, this becomes unmaintainable
 }
 ```
 
-### 3. Limited Extension Capabilities
+### 3) Limited Extensibility
 
-**Problem scenario**: Cannot implement smart conditional assembly, prone to module conflicts.
+Problem scenario: Conditional auto‑wiring of modules isn’t available, leading to conflicts between module definitions.
 
 ```kotlin
+// Default module provided by the framework
 val frameworkModule = module {
     single<HttpClientEngine> { OkHttp.create() }
 }
-
+// Test module defined by the business team
 val businessModule = module {
     single<HttpClientEngine> { MockEngine.create() }
 }
 
-// Which one will take effect? Only decided by loading order
+// Which HttpClientEngine takes effect?
+// It entirely depends on module loading order
 startKoin {
     modules(frameworkModule, businessModule)
 }
 ```
 
-**Core problem**: Koin as a dependency injection library cannot meet true inversion of control needs. It's more like an excellent "engine" rather than a "car" that can be used directly.
+Core issue: Koin is essentially a DI library that solves “getting dependencies” very well, but it provides limited support for deeper automation needs found in Inversion of Control (IoC).
+It’s more like a high‑performance “engine” than a “car” you can drive directly.
 
-## KoinBoot: From Dependency Injection to Application Framework
+## KoinBoot: From DI to an Application Framework
 
-### From Problem to Solution Approach
+### From Problems to a Solution
 
-When we discovered that Koin as a dependency injection library couldn't meet true inversion of control needs, we decided to build a more complete solution based on Koin. Koin is more like an excellent "engine", while we need a "car" that can be used directly.
+When we found Koin insufficient for true IoC needs, we decided to build a more complete solution on top of it.
+We planned to add configuration management, lifecycle control, auto‑configuration, and module auto‑import to turn it into a ready‑to‑use application framework.
 
-**KoinBoot's Goal**: Add configuration management, lifecycle control, auto-configuration, and module import capabilities to Koin, this powerful dependency injection engine, making it a truly practical application framework.
+## Solution 1: Configuration Management (KoinProperties)
 
-Let's see how KoinBoot solves these problems through four core features:
+### Why Redesign Configuration?
 
-## Solution 1: Configuration Management System (KoinProperties)
+The first issue to solve is configuration management. A practical scaffold must allow developers to provide dynamic configurations for different environments and businesses, without modifying source code.
 
-### Why Redesign the Configuration System?
+### Designing the Configuration System
 
-The first problem we need to solve is configuration management. A practical scaffold must allow developers to provide dynamic configuration for different environments and businesses, rather than modifying framework source code.
+Phase 1: Choose the underlying storage format
 
-### Design Process of Configuration System
-
-Our configuration system went through four design stages:
-
-**Stage 1: Choose Underlying Storage Format**
-
-All configuration files are essentially key-value pairs:
-- `.properties` files: `key=value`
-- `.yml/.json` files: hierarchical key-value pairs
+All configuration files — .properties, .yml, .json — are essentially key‑value pairs.
 
 ```kotlin
-// Choose flat string format for compatibility with various configuration sources
 "ktor.client.timeout.request" = 5000L
 ```
 
-We chose flat strings as underlying storage for compatibility with any configuration source.
+We chose flat strings as the underlying storage because they are the most universal and can interoperate with any configuration source.
 
-**Stage 2: Provide DSL Syntax**
+Phase 2: Provide a DSL
 
-Direct string manipulation is not developer-friendly, and hierarchical structure is not obvious. We used Kotlin's language features to override the String invoke operator, implementing JSON-like DSL syntax:
+Working with strings directly is unfriendly and hides structure. Leveraging Kotlin’s language features, we override String’s invoke operator to create a JSON‑like hierarchical DSL:
 
 ```kotlin
 properties {
@@ -187,65 +195,82 @@ properties {
 }
 ```
 
-The framework automatically converts this nested structure to flat format `ktor.client.timeout.request=30000L`.
+Internally, the framework automatically flattens this nested structure into `ktor.client.timeout.request=30000L`.
 
-**Stage 3: Implement Smart Code Hints**
+Phase 3: Provide code completion
 
-Having only DSL is not enough - no code hints, and string-based operators are error-prone.
-
-Since configuration property field keys are fixed, why not make them extension properties of `KoinProperties`?
+A DSL alone isn’t enough. String‑based operations are error‑prone and lack code completion.
+Since these configuration keys are generally fixed, why not define them as extension properties on KoinProperties?
 
 ```kotlin
 // Modular configuration properties
 properties {
-    // When introducing Ktor module, automatically get these configuration hints
+    // When you include the Ktor module, you automatically get these suggestions
     ktor_client_timeout_request = 30000L
-    // Type safe
+    // Type‑safe
     ktor_client_logging_enabled = true
 
-    // When introducing Kermit module, automatically get these configuration hints
+    // Include the Kermit module to get suggestions for these
     kermit_severity = Severity.VERBOSE
 }
 ```
 
-This way, when you introduce the Ktor module, you automatically get related configuration hints; when you remove the module, the hints disappear too.
+> This way, when you include the Ktor module, the IDE suggests relevant configuration properties; remove the module and the suggestions disappear.
 
-**Stage 4: Type-Safe Configuration Mapping**
+![img_3.png](images/img_3.png)
 
-Finally, we need to conveniently use these configurations. If we always get values from the map by key, it generates a lot of boilerplate code. A better approach is to map configurations to type-safe objects:
+Phase 4: Type‑safe configuration mapping
+
+Finally, we need a more convenient way to use these configurations. If you fetch values from a Map by key each time, you’ll write a lot of boilerplate.
+A better approach is to map related keys to a type‑safe data object:
 
 ```kotlin
-// Map configurations to type-safe objects through annotations and serialization
-@KoinPropInstance("ktor.client")
 data class KtorClientProperties(
     val timeout: Timeout = Timeout(),
     val logging: Logging = Logging()
 )
 
-@KoinPropInstance("ktor.client.timeout")
 data class Timeout(
     val request: Long = 30000L,
     val connect: Long = 30000L,
     val socket: Long = 30000L,
 )
 
-// Use configuration object directly
+// Retrieve the config object directly
 val config = koin.get<KtorClientProperties>()
 ```
 
-![img_3.png](img_3.png)
+> However, when you only need an inner subset, you lose the hierarchy. We need a more general way to map configuration items.
+>
+```kotlin
+// Retrieve the inner config directly
+val config = koin.get<Timeout>()
+```
 
-Based on Kotlin Serialization, use `@KoinPropInstance` annotation to mark configuration classes, using `preKey` to specify the serialization hierarchy starting point.
+So, based on Kotlin Serialization’s `@MetaSerializable`, we define an annotation `@KoinPropInstance` for configuration data classes, with `preKey` specifying the starting path for serialization.
 
-![img_12.png](img_12.png)
-
+> With @MetaSerializable we can access runtime metadata and read the `preKey` value configured on `@KoinPropInstance` for the config data class.
+![img_12.png](images/img_12.png)
+>
 ```kotlin
 @MetaSerializable
 @Target(AnnotationTarget.CLASS)
 annotation class KoinPropInstance(val preKey: String = "")
 ```
 
-Through these four stages, we implemented a type-safe, code-hinted, concise configuration solution.
+> With a small wrapper leveraging classes annotated by `@KoinPropInstance`, we can implement type‑safe mapping and object serialization from properties.
+
+```kotlin
+@KoinPropInstance("ktor.client.timeout")
+data class Timeout(
+    val request: Long = 30000L,
+    val connect: Long = 30000L,
+    val socket: Long = 30000L,
+)
+val config = koin.get<Timeout>()
+```
+
+With these four phases we built a type‑safe, IDE‑friendly, and concise configuration solution.
 
 ```kotlin
 // set
@@ -257,22 +282,22 @@ val properties = KoinProperties().apply {
 val ktorClientProperties = properties.asPropInstance<KtorProperties>()!!
 val timeout = properties.asPropInstance<KtorProperties.Timeout>()!!
 val logging = properties.asPropInstance<KtorProperties.Logging>()!!
-//  assert
+// assert
 assert(1000L == timeout.request && ktorClientProperties.client.timeout.request == timeout.request)
 assert(LogLevel.BODY == logging.level && ktorClientProperties.client.logging.level == logging.level)
 ```
 
 ## Solution 2: Lifecycle Management (KoinLifecycleExtender)
 
-### From "When to Configure" to "When to Take Effect"
+### From “When to Configure” to “When It Takes Effect”
 
-After solving the problem of "how to configure", another important question arose: **"When to configure?" and "When to take effect?"**
+After solving “how to configure,” the next crucial questions are: “when to configure?” and “when will it take effect?”
 
-Configuration alone is not enough. If components cannot be initialized and destroyed at the right time—for example, Sentry must complete initialization before all business modules start to capture global exceptions—the system will have problems.
+Configuration alone isn’t enough. If components aren’t initialized or destroyed at the right time — e.g., Sentry must be initialized before business modules to capture global exceptions — you can’t guarantee all startup/runtime exceptions are captured.
 
-### Standardized Lifecycle Management Mechanism
+### A Standardized Lifecycle Mechanism
 
-We introduced a standardized lifecycle mechanism, similar to Android's Activity Lifecycle:
+We introduced a standardized lifecycle mechanism, inspired by Android’s Activity lifecycle.
 
 ```kotlin
 enum class KoinPhase {
@@ -297,36 +322,36 @@ interface KoinLifecycleExtender {
 }
 ```
 
-Specific implementation example:
+A concrete implementation example:
 
 ```kotlin
 class SentryExtender : KoinLifecycleExtender {
     override fun doConfiguring(context: KoinBootContext) {
-        // Initialize Sentry in configuration phase
+        // Initialize Sentry during the Configuring phase
         Sentry.init {
-            // sentry_dsn is an extension property of KoinProperties
+            // sentry_dsn is an extension property on KoinProperties
             dsn = context.properties.sentry_dsn
-            // Configure other options...
+            // Other options…
         }
     }
 
     override fun doStopping(context: KoinBootContext) {
-        // Close Sentry in stopping phase
+        // Close Sentry during the Stopping phase
         Sentry.close()
     }
 }
 ```
 
-But who calls these methods of `KoinLifecycleExtender`?
+But who calls these `KoinLifecycleExtender` methods?
 
-### Coordinated Lifecycle Management
+### Orchestrating the Lifecycle
 
-We need a management layer to coordinate these lifecycle extenders:
+We need a manager to orchestrate lifecycle extenders:
 
 ```kotlin
 class KoinBoot {
     // Manage lifecycle
-    // Call extenders
+    // Invoke extenders
     // Finally start Koin
 }
 
@@ -350,55 +375,57 @@ fun runKoinBoot(initializer: KoinBootInitializer): Koin = KoinBoot.run {
 }
 ```
 
-Usage only requires declarative registration:
+In practice, developers just register extenders declaratively:
 
 ```kotlin
-// Declaratively register extenders when using
+// Declaratively register extenders
 runKoinBoot {
     extenders(SentryExtender())
-    // All Sentry-related logic is encapsulated in the extender
-    // Main startup flow remains clean
+    // All Sentry logic is encapsulated in the extender
+    // The main startup flow stays clean
 }
 ```
 
-Through this approach, KoinBoot transforms originally chaotic procedural startup code into declarative, pluggable modular lifecycle management. Each module independently manages its own lifecycle, keeping the main startup flow clean.
+With this, KoinBoot turns messy, procedural startup code into declarative, pluggable, modular lifecycle management.
+Each module can independently declare extenders to influence the application’s startup lifecycle, keeping the main flow clean.
 
-## Solution 3: Auto-Configuration (KoinAutoConfiguration)
+## Solution 3: Auto‑Configuration (KoinAutoConfiguration)
 
-### From "Forced Provision" to "Smart Yielding"
+### From “Mandatory Defaults” to “Smart Fallbacks”
 
-So far, we can flexibly configure modules and precisely control startup/shutdown timing. But in practice, we discovered a deeper need:
+So far, we can flexibly configure properties and precisely control when things start and stop. In practice, we needed more:
 
-**What if the business side wants to use their own implementation instead of the default modules provided by the scaffold (like the preset `HttpClient`)?**
+The scaffold provides some default Koin modules (e.g., an `http module` with a pre‑configured HttpClient). What if the business team wants its own implementation?
 
-With current logic, we would still forcibly load the default module, potentially causing conflicts. The scaffold should be a "servant", not a "dictator". We need modules to judge for themselves whether they should be loaded.
+By default we’d still load the framework module, potentially causing conflicts. We need modules to decide for themselves whether they should load.
 
-### Borrowing Auto-Configuration Design Philosophy
+### Borrowing the Auto‑Configuration Idea
 
-We designed the `KoinAutoConfiguration` interface to make modules "smart":
+We designed the `KoinAutoConfiguration` interface to make modules autonomous:
 
 ```kotlin
 interface KoinAutoConfiguration {
 
-    /** Configuration match condition: if true, matching succeeds and [configure] method will be called */
+    /** Matching condition: when true, the [configure] method will be invoked */
     fun KoinAutoConfigurationScope.match(): Boolean = true
 
     /** Configuration scope */
     fun KoinAutoConfigurationScope.configure()
 
-    /** Configuration order, smaller numbers have higher priority */
+    /** Load order; the smaller the number, the higher the priority */
     val order: Int
         get() = Int.MAX_VALUE
 }
 ```
 
-1. **Conditional judgment**: Check environment to decide whether to take effect
-2. **Order control**: Control loading order
+This interface provides two core capabilities:
+1. Conditional checks: the `match` method decides whether the module should be active.
+2. Ordering: the `order` property controls priority when loading modules.
 
 ```kotlin
 val KtorAutoConfiguration = koinAutoConfiguration {
     module {
-        // When HttpClientEngine instance doesn't exist, use OkHttp engine
+        // If there is no HttpClientEngine, use OkHttp
         onMissInstances<HttpClientEngine> {
             single<HttpClientEngine> { OkHttp.create() }
         }
@@ -413,77 +440,88 @@ val userModule = module {
 runKoinBoot {
     autoConfigurations(KtorAutoConfiguration)
     modules(userModule)
-    // Result: Use MockEngine, default configuration gracefully yields
+    // Result: MockEngine is used; the default config gracefully yields
 }
 ```
 
-### Implementing True Inversion of Control
+### Achieving True Inversion of Control
 
-This pattern transforms our modules from **"you must use what I provide"** to **"I provide best practices when you need them, I gracefully yield when you customize"**.
+This pattern turns our modules from “you must use what I provide” into “I provide best practices by default, and step aside when you customize.”
 
-This way, the scaffold is both ready to use out of the box and highly flexible.
+Thus the scaffold works out‑of‑the‑box while retaining high flexibility for business customization.
 
-## Solution 4: Auto-Import (koin-boot-initializer)
+## Solution 4: Auto‑Import (koin‑boot‑initializer)
 
-### The Final Obstacle
+### The Last Obstacle
 
-By now, we've built feature-complete module components: configurable, with lifecycle, and smart.
+By now we have modular components that are dynamically configurable, lifecycle‑aware, and auto‑load defaults.
 
-But we discovered a problem:
+But we found a lingering issue:
 
-- Developers need to distinguish between `autoConfigurations` and `extenders`
-- Need to understand the specific types and usage of each module
-- Need to manually manage all component invocation methods
+- Developers must distinguish between `autoConfigurations` and `extenders`.
+- They must know each module’s usage and types.
+- They must manually manage registration for all components.
 
 ```kotlin
 runKoinBoot {
+    // Manually register all auto‑configurations
     autoConfigurations(
         KtorAutoConfiguration,
         MultiplatformSettingsAutoConfiguration
     )
+    // Manually register all lifecycle extenders
     extenders(KermitExtender(), SentryExtender())
     properties {
-        // Business configuration...
+        // Business configuration…
     }
     modules(userModule)
 }
 ```
 
-This manual operation is the final obstacle to achieving "plug-and-play".
+This manual registration is the final barrier to plug‑and‑play.
 
-### Unified Interface Attempt
+### A Unified Interface Attempt
 
-We tried to unify the interface, letting each module provide a `BootInitializer`, so business-side developers don't need to care about `autoConfigurations` vs `extenders`:
+We first unified the interface so that each module exposes a `BootInitializer`. Developers no longer need to care whether a module is an auto‑configuration or an extender.
 
 ```kotlin
+// SentryBootInitializer.kt
+val SentryBootInitializer: KoinBootInitializer = {
+    extenders(SentryExtender())
+}
+// MultiplatformSettingsBootInitializer.kt
+val MultiplatformSettingsBootInitializer: KoinBootInitializer = {
+    autoConfigurations(MultiplatformSettingsAutoConfiguration())
+}
+// main.kt
 runKoinBoot {
-    KtorBootInitializer()
-    KermitBootInitializer()
+    
     MultiplatformSettingsBootInitializer()
     SentryBootInitializer()
+    // ...BootInitializers of other default modules
     properties {
-        // Business configuration...
+        // Business configuration…
     }
     modules(userModule)
 }
 ```
 
-But this still has problems: every time you add a new module dependency in `build.gradle`, you must remember to manually call its `BootInitializer` in the startup file. When removing dependencies, you must remember to delete the corresponding code.
+Still not ideal: whenever you add a new module dependency in `build.gradle`, you must remember to call its `BootInitializer` in the startup code; and remove it when the dependency is removed.
 
-### Let Build Tools Help
+### Let the Build Tool Help
 
-Since the problem is in dependency management, why not let Gradle solve it?
+Since the problem lies in dependency management, let Gradle handle it.
 
-We developed the `koin-boot-initializer` Gradle plugin:
+We wrote a Gradle plugin named `koin-boot-initializer`:
 
 ```kotlin
-// build.gradle.kts - Declare needed modules
+// build.gradle.kts — declare required modules
 plugins {
     `koin-boot-initializer`
 }
 
 val bootDependencies = listOf(
-    projects.component.ktor,    // Network module
+    projects.component.ktor,    // Networking module
     projects.component.kermit,  // Logging module
     projects.component.sentry   // Monitoring module
 )
@@ -497,12 +535,12 @@ dependencies {
 }
 ```
 
-### Auto-Generate Unified Entry Point
+### Auto‑generate a Unified Entry Point
 
-The plugin automatically identifies dependencies, finds all `BootInitializer`s, then generates a unified entry file:
+At compile time the plugin scans all dependencies to find `BootInitializer` implementations and generates a unified entry file.
 
 ```kotlin
-// Auto-generated AppBootInitializer
+// Auto‑generated AppBootInitializer
 val AppBootInitializer: KoinBootInitializer = {
     io.github.kamo030.KtorBootInitializer()
     io.github.kamo030.KermitBootInitializer()
@@ -510,40 +548,41 @@ val AppBootInitializer: KoinBootInitializer = {
 }
 ```
 
-When using, you only need:
+Usage becomes trivial:
 
 ```kotlin
 runKoinBoot {
-    // Auto-generated unified entry point
+    // Auto‑generated unified entry
     AppBootInitializer()
 
     properties {
-        // Business configuration...
+        // Business configuration…
     }
     module {
-        // Business module declarations...
+        // Business module declarations…
     }
 }
 ```
 
-With this plugin, whether adding or removing functional modules, we only need to modify dependency declarations in `build.gradle.kts`, without modifying any startup code. This achieves true "plug-and-play".
+With this plugin, whether adding or removing modules, you only change dependencies in `build.gradle.kts`, without touching startup code — true plug‑and‑play.
 
-## Final Result: Complete Development Experience
+## The Result: A Complete Developer Experience
 
-### Collaboration of Four Solutions
+### How the Four Solutions Work Together
 
-Let's see the development experience when four solutions are combined:
+Let’s see what the combined experience looks like:
 
-### Step 1: Declare Needed Features
+### Step 1: Declare the capabilities you need
 
+In `build.gradle.kts`, declare the component modules just like normal dependencies.
 ```kotlin
-// build.gradle.kts - Declare needed components
+// build.gradle.kts — declare needed components
 plugins {
     `koin-boot-initializer`
 }
 
 val bootDependencies = listOf(
-    projects.component.ktor,    // Network module
+    projects.component.ktor,    // Networking module
     projects.component.kermit,  // Logging module
     projects.component.sentry   // Monitoring module
 )
@@ -557,41 +596,42 @@ dependencies {
 }
 ```
 
-### Step 2: Configure Desired Behavior
+### Step 2: Configure desired behavior
+
+At the application entry, invoke the boot function and configure properties and business modules.
 
 ```kotlin
-// main.kt - Clean startup code
+// main.kt — concise startup code
 fun main() {
     val koin = runKoinBoot {
-        // Call auto-generated initializer
+        // Call the auto‑generated initializer
         AppBootInitializer()
 
-        // Smart-hinted configuration
+        // Configure via an IDE‑friendly DSL
         properties {
             kermit_severity = Severity.Verbose
             ktor_client_logging_enabled = true
         }
 
-        // Optional: Business customization
+        // Optional: provide a custom implementation
         // module {
         //    single<HttpClientEngine> { OkHttp.create() }
         // }
     }
 
-    // Use directly without caring about initialization details
+    // Fetch instances from the container; no need to care about init details
     val httpClient = koin.get<HttpClient>()
     println("HttpClient is ready to use!")
 }
 ```
 
-### Step 3: Enjoy Automated Execution
+### Step 3: Enjoy automated runtime
 
-When `runKoinBoot` executes:
+When `runKoinBoot` runs, the framework automatically does the following:
 
-1. **Lifecycle management** starts operating, Sentry is initialized with priority
-2. **Auto-configuration** starts scanning, finds no custom `HttpClient`, so loads the default `HttpClient`
-    1. Finds that default `HttpClient` needs `HttpClientEngine`, and business-side developer hasn't defined `HttpClientEngine`, so loads the default `HttpClientEngine`
-    2. Gets configured `ktor_client_logging_enabled` through context and automatically initializes `HttpClient` with default configuration
+1. Lifecycle management starts. `SentryExtender` is invoked in the Configuring phase so that Sentry is initialized first.
+2. Auto‑configuration scans and finds no custom `HttpClientEngine`, so it loads Ktor’s default OkHttp engine.
+3. The framework then initializes `HttpClient`. During initialization it reads configurations like `ktor_client_logging_enabled` from the context and decides whether to install the Logging plugin accordingly.
    ```kotlin
    val logging = koin.getPropInstance<KtorProperties.Logging>()
     // Logging configuration
@@ -602,45 +642,217 @@ When `runKoinBoot` executes:
         }
     }
    ```
-3. All modules are ready, application starts
+4. Once all modules are ready, the application starts successfully.
 
-### True "Plug-and-Play"
+### True plug‑and‑play
 
-If we decide we no longer need Kermit logging, we only need to:
+If we decide Kermit logging is no longer needed, it’s simple:
 
-```kotlin
-// build.gradle.kts
-val bootDependencies = listOf(
-    projects.component.ktor,
-    // Remove Kermit dependency
-    // projects.component.kermit, 
-    projects.component.sentry
-)
-```
+1. Go back to build.gradle.kts and comment out or remove the Kermit dependency.
 
-1. Go to `build.gradle.kts` and remove the Kermit dependency
-2. Sync the project again
+    ```kotlin
+    // build.gradle.kts
+    val bootDependencies = listOf(
+        projects.component.ktor,
+        // remove Kermit dependency
+        // projects.component.kermit,
+        projects.component.sentry
+    )
+    ```
 
-At this point, `kermit_severity` in `main.kt` will immediately show an error, indicating the configuration item doesn't exist.
+2. Sync the Gradle project.
 
-This is true "plug-and-play": **dependencies determine functionality, code automatically validates**.
+At this point, the `kermit_severity` property previously written in main.kt will immediately turn red in the IDE, indicating that the property no longer exists.
+
+That’s true plug‑and‑play: dependencies determine functionality, and code is automatically validated.
 
 ## Summary
 
-### From "Manual Transmission" to "Automatic Transmission"
+### From “Manual” to “Automatic”
 
-Through KoinBoot, we successfully upgraded a pure dependency injection "engine" into an automated, lifecycle-aware, intelligently configurable application framework.
+With KoinBoot, we’ve upgraded Koin from a pure DI “engine” into an application framework with automation, lifecycle management, and auto‑configuration.
 
-### Core Values Achieved
+### Core value delivered
 
-- **From dependency injection to inversion of control**: Making framework smarter, developers more focused on business
-- **Modular development**: Adding dependencies gains functionality, removing dependencies loses functionality
-- **Enhanced development experience**: Goodbye to tedious manual configuration
-- **True "plug-and-play"**: Dependencies determine functionality, automatic error validation
+- From DI to IoC: more automation so developers can focus on business logic.
+- Modular development: add a dependency to gain functionality; remove it to drop the feature automatically.
+- Better developer experience: say goodbye to tedious manual configuration and initialization code.
+- True plug‑and‑play: Gradle dependencies directly determine app capabilities, with static code checks ensuring consistency.
 
-**KoinBoot = Koin + Configuration Management + Lifecycle + Auto-Configuration + Auto-Import**
+KoinBoot = Koin + Configuration Management + Lifecycle + Auto‑Configuration + Auto‑Import
 
-Finally, we achieved our goal of building efficient, flexible, and maintainable multi-platform scaffolds, making every module a pluggable smart component. Building better application architecture.
+Ultimately, we built an efficient, flexible, and maintainable multiplatform scaffold, making each feature module a pluggable default auto‑configuration component to help us build better app architectures.
 
+## Real‑World Case: Dynamic Configuration Management System
+
+### Business scenario
+
+Suppose we’re building an enterprise‑grade mobile app that needs to support:
+
+- Different server configurations for dev/test/prod
+- Operators can adjust app behavior dynamically from a console (feature flags, API timeouts, etc.)
+- Gray releases: different user cohorts get different configurations
+- Changes take effect in real time without restarting the app
+
+### Solution based on KoinBoot
+
+#### 1) Remote configuration fetch extender
+
+Create a `KoinLifecycleExtender` that fetches the latest configuration from a remote server during the Configuring phase at startup.
+
+```kotlin
+class RemoteConfigExtender(
+    private val configService: ConfigService,
+    private val configWatcher: ConfigWatcher
+) : KoinLifecycleExtender {
+
+    override fun doConfiguring(context: KoinBootContext) {
+        // Fetch the latest configuration during the Configuring phase
+        val remoteConfig = fetchRemoteConfig()
+
+        // Merge remote config into local properties
+        context.properties.putAll(remoteConfig)
+
+        // Start watching for config changes
+        startConfigWatcher(context)
+    }
+
+    private fun fetchRemoteConfig(): Map<String, Any> {
+        // Call configuration service API
+        return configService.getConfiguration(
+            appVersion = BuildConfig.VERSION_NAME,
+            userId = getCurrentUserId(),
+            environment = getCurrentEnvironment()
+        )
+    }
+
+    private fun startConfigWatcher(context: KoinBootContext) {
+        // Use WebSocket or long polling to watch for changes
+        configWatcher.onConfigChanged { newConfig ->
+            // Update KoinProperties on changes
+            context.properties.putAll(newConfig)
+
+            // Trigger reconfiguration of relevant components
+            notifyConfigChanged(context, newConfig)
+        }
+    }
+}
+```
+
+#### 2) Hot reload mechanism
+
+To react to config changes, we also need a hot reload extender.
+
+```kotlin
+class HotReloadExtender(
+    private val configWatcher: ConfigWatcher
+) : KoinLifecycleExtender {
+
+    override fun doReady(context: KoinBootContext) {
+        // After the app is ready, register a change listener
+        configWatcher.onConfigChanged { changedKeys ->
+            changedKeys.forEach { key ->
+                when {
+                    key.startsWith("ktor.client") -> {
+                        // Reconfigure the HTTP client
+                        reconfigureHttpClient(context)
+                    }
+                    key.startsWith("cache") -> {
+                        // Reconfigure cache
+                        reconfigureCache(context)
+                    }
+                    key.startsWith("feature_flags") -> {
+                        // Update feature flags
+                        updateFeatureFlags(context)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun reconfigureHttpClient(context: KoinBootContext) {
+        val koin = context.koin
+        val newConfig = koin.getPropInstance<KtorClientProperties>()
+
+        // Recreate HttpClient instance
+        val newClient = HttpClient(koin.get<HttpClientEngine>()) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = newConfig.timeout.request
+                connectTimeoutMillis = newConfig.timeout.connect
+            }
+        }
+
+        // Replace the instance in the container
+        koin.declare(newClient, override = true)
+    }
+}
+```
+
+#### 3) Feature flag management
+
+Feature flags can also be managed type‑safely via the configuration system.
+
+```kotlin
+@KoinPropInstance("feature_flags")
+data class FeatureFlags(
+    val newUserInterface: Boolean = false,
+    val experimentalFeatures: Boolean = false,
+    val premiumFeatures: Boolean = false
+)
+
+class FeatureFlagExtender : KoinLifecycleExtender {
+
+    override fun doReady(context: KoinBootContext) {
+        val featureFlags = context.koin.getPropInstance<FeatureFlags>()
+
+        // Configure app behavior based on flags
+        if (featureFlags.newUserInterface) {
+            enableNewUI()
+        }
+
+        if (featureFlags.experimentalFeatures) {
+            enableExperimentalFeatures()
+        }
+    }
+}
+```
+
+#### 4) Full usage example
+
+Register these extenders into KoinBoot.
+
+```kotlin
+fun main() {
+    val koin = runKoinBoot {
+        // Load all auto‑discovered modules
+        AppBootInitializer()
+
+        // Register dynamic configuration extenders
+        extenders(
+            RemoteConfigExtender(),
+            HotReloadExtender(),
+            FeatureFlagExtender()
+        )
+
+        // Local default configs (as fallback)
+        properties {
+            ktor_client_timeout_request = 30000L
+            feature_flags_newUserInterface = false
+            cache_max_size = 1024
+        }
+    }
+
+}
+```
+
+### Benefits achieved
+
+1. Dynamic configuration updates: after operators change settings, all clients update automatically within a short time — no new release needed
+2. Gray release support: deliver different configs to different cohorts for progressive rollout and testing
+3. Instant incident mitigation: when a newly released feature misbehaves, turn it off immediately via configuration
+4. A/B testing: easily deliver different UIs or feature sets to different cohorts for comparison
+
+KoinBoot makes Koin not just a DI container, but a comprehensive solution capable of supporting modern application needs.
+It lets developers focus on business logic while the framework handles configuration management, lifecycle control, and other plumbing.
 * [KotlinMultiplatform](https://kotlinlang.org/docs/multiplatform.html)
 * [Koin](https://insert-koin.io/)
