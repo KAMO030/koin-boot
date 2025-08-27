@@ -2,10 +2,10 @@ plugins {
     kotlin("multiplatform") apply false
     kotlin("android") apply false
     kotlin("plugin.serialization") version libs.versions.kotlin apply false
-    kotlin("plugin.compose") apply false
-    id("org.jetbrains.compose") apply false
     id("com.android.library") apply false
     id("com.android.application") apply false
+    id("androidx.room") version libs.versions.room apply false
+    id("com.google.devtools.ksp") version libs.versions.ksp apply false
     alias(libs.plugins.sentry) apply false
 }
 

@@ -1,4 +1,4 @@
-package com.yy.myuko.component.koin.test
+package io.github.kamo030.koinboot.component.koin.test
 
 import io.github.kamo030.koinboot.core.configuration.*
 import io.github.kamo030.koinboot.core.runKoinBoot

@@ -137,7 +137,7 @@ KoinBoot 的桥梁，它告诉 KoinBoot 如何配置和初始化库。
 
 插件的配置选项包括：
 
-1. **generatedPackage**：生成的 BootInitializer 的包名，默认为 "com.yy.myuko.generated"
+1. **generatedPackage**：生成的 BootInitializer 的包名，默认为 "io.github.kamo030.koinboot.generated"
 2. **generatedInitializerName**：生成的 BootInitializer 的名称，默认为 "AppBootInitializer"
 3. **include**：包含指定的依赖项
 4. **includes**：包含多个依赖项
@@ -172,10 +172,10 @@ koinBootInitializer {
  * Do not modify this file manually.
  *
  * Found BootInitializers from dependencies:
- * - [com.yy.myuko.KermitBootInitializer]
- * - [com.yy.myuko.MultiplatformSettingsBootInitializer]
- * - [com.yy.myuko.SentryBootInitializer]
- * - [com.yy.myuko.KtorBootInitializer]
+ * - [io.github.kamo030.koinboot.KermitBootInitializer]
+ * - [io.github.kamo030.koinboot.MultiplatformSettingsBootInitializer]
+ * - [io.github.kamo030.koinboot.SentryBootInitializer]
+ * - [io.github.kamo030.koinboot.KtorBootInitializer]
  */
 val AppBootInitializer: KoinBootInitializer = {
     KermitBootInitializer()

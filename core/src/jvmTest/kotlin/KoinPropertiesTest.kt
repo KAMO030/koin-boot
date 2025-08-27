@@ -1,4 +1,4 @@
-package com.yy.myuko.component.koin.test
+package io.github.kamo030.koinboot.component.koin.test
 
 import io.github.kamo030.koinboot.core.*
 import org.koin.core.component.KoinComponent

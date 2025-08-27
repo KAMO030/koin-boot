@@ -34,23 +34,10 @@ androidx-appcompat = "1.7.1"
 compose-multiplatform = "1.8.1"
 compose-hot-reload = "1.0.0-alpha05" # https://github.com/JetBrains/compose-hot-reload/releases
 
-# JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
-compose-lifecycle = "2.9.0"
-compose-navigation = "2.9.0"
-compose-material3-adaptive = "1.1.0"
-
-# Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
-# https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.4.0-alpha07"
-jetpack-compose = "1.8.1"
-androidx-compose-material3-adaptive = "1.1.0"
 
 ### OTHERS ###
 
 multiplatform-settings = "1.3.0" #  https://github.com/russhwolf/multiplatform-settings/releases
-bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
-filekit = "0.8.1" # https://github.com/vinceglb/FileKit/releases
-kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
 ktor = "3.2.0" # https://github.com/ktorio/ktor/releases
 koin = "4.1.0" # https://github.com/InsertKoinIO/koin/releases
 coil = "3.2.0" # https://github.com/coil-kt/coil/releases
@@ -73,7 +60,6 @@ android-library-gradle-plugin = { module = "com.android.library:com.android.libr
 android-application-gradle-plugin = { module = "com.android.application:com.android.application.gradle.plugin", version.ref = "android-gradle-plugin" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 compose-multiplatfrom-gradle-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose-multiplatform" }
-kotlin-compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 
 # Kotlinx
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
@@ -97,8 +83,8 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "androidx-annotation" }
-androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "jetpack-compose" }
-androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "jetpack-compose" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose-multiplatform" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-multiplatform" }
 # Used dynamically, don't remove.
 androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
 
@@ -141,24 +127,9 @@ paging-common = { module = "androidx.paging:paging-common", version.ref = "pagin
 paging-compose-android = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatform-settings" }
 multiplatform-settings-test = { module = "com.russhwolf:multiplatform-settings-test", version.ref = "multiplatform-settings" }
-# JetBrains Compose Multiplatform
-compose-lifecycle-runtime = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime", version.ref = "compose-lifecycle" }
-compose-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "compose-lifecycle" }
-compose-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "compose-lifecycle" }
-compose-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "compose-lifecycle" }
-compose-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "compose-navigation" }
-compose-navigation-runtime = { module = "org.jetbrains.androidx.navigation:navigation-runtime", version.ref = "compose-navigation" }
-compose-material3-adaptive-core = { module = "org.jetbrains.compose.material3.adaptive:adaptive", version.ref = "compose-material3-adaptive" }
-compose-material3-adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "compose-material3-adaptive" }
-compose-material3-adaptive-navigation0 = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "compose-material3-adaptive" }
-compose-material3-adaptive-navigation-suite = { module = "org.jetbrains.compose.material3:material3-adaptive-navigation-suite", version.ref = "compose-multiplatform" }
 
 # Logging
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 
-# JNA
-jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
-jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 
-directories = { module = "dev.dirs:directories", version = "26" }
 

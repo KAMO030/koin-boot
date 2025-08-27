@@ -143,7 +143,7 @@ The plugin's main components include:
 
 Plugin configuration options include:
 
-1. **generatedPackage**: Package name for generated BootInitializer, defaults to "com.yy.myuko.generated"
+1. **generatedPackage**: Package name for generated BootInitializer, defaults to "io.github.kamo030.koinboot.generated"
 2. **generatedInitializerName**: Name of generated BootInitializer, defaults to "AppBootInitializer"
 3. **include**: Include specified dependencies
 4. **includes**: Include multiple dependencies
@@ -178,10 +178,10 @@ The plugin generates a BootInitializer similar to the following:
  * Do not modify this file manually.
  *
  * Found BootInitializers from dependencies:
- * - [com.yy.myuko.KermitBootInitializer]
- * - [com.yy.myuko.MultiplatformSettingsBootInitializer]
- * - [com.yy.myuko.SentryBootInitializer]
- * - [com.yy.myuko.KtorBootInitializer]
+ * - [io.github.kamo030.koinboot.KermitBootInitializer]
+ * - [io.github.kamo030.koinboot.MultiplatformSettingsBootInitializer]
+ * - [io.github.kamo030.koinboot.SentryBootInitializer]
+ * - [io.github.kamo030.koinboot.KtorBootInitializer]
  */
 val AppBootInitializer: KoinBootInitializer = {
     KermitBootInitializer()
