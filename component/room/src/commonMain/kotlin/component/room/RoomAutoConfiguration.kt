@@ -5,13 +5,16 @@ import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import io.github.kamo030.koinboot.core.configuration.KoinBootQualifiers
 import io.github.kamo030.koinboot.core.configuration.koinAutoConfiguration
+import io.github.kamo030.koinboot.core.configuration.onMissInstances
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import org.koin.core.module.Module
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.Qualifier
 import org.koin.core.qualifier._q
+import org.koin.core.scope.Scope
 import org.koin.dsl.bind
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
 val KoinBootQualifiers.RoomDatabaseClass: Qualifier
@@ -25,6 +28,17 @@ val RoomAutoConfiguration = koinAutoConfiguration {
     val roomProperties = propertyInstance<RoomProperties>() ?: RoomProperties()
 
     module {
+
+        onMissInstances<RoomDatabase.Builder<*>> {
+            factory { parametersHolder ->
+                val databaseClass = parametersHolder.getOrNull<KClass<RoomDatabase>>()
+                    ?: getOrNull(KoinBootQualifiers.RoomDatabaseClass)
+                requireNotNull(databaseClass) { "RoomDatabase class not found" }
+                val name = parametersHolder.getOrNull<String>() ?: roomProperties.databaseName
+                logger.debug("creating RoomDatabase.Builder: [RoomDatabase name: $name databaseClass: $databaseClass]")
+                createDatabaseBuilder(databaseClass, name + roomProperties.databaseSuffixName, roomProperties.databasePath)
+            } bind RoomDatabase.Builder::class
+        }
 
         /*
          * 使用以下方式获取，每次get都会创建新的实例，但是如果 `name` 相同，实际上操作的是同一个 `.db` 库
@@ -86,6 +100,15 @@ private fun RoomDatabase.Builder<*>.applyQueryConfig(
     RoomProperties.CoroutineContextType.UNCONFINED -> Dispatchers.Unconfined
 }.run(::setQueryCoroutineContext)
 
+expect inline fun <reified T : RoomDatabase> Scope.createDatabaseBuilder(
+    databaseClass: KClass<T>,
+    name: String,
+    path: String
+): RoomDatabase.Builder<T>
+
+expect inline fun <reified T : RoomDatabase> Scope.createInMemoryDatabaseBuilder(
+    databaseClass: KClass<T>
+): RoomDatabase.Builder<T>
 
 
 /**

@@ -8,6 +8,7 @@ import io.github.kamo030.koinboot.core.KoinProperties
 @KoinPropInstance("room")
 data class RoomProperties(
     val databaseName: String = "app_room_database_main",
+    val databasePath: String = "",
     val databaseSuffixName: String = "",
     val journalMode: RoomDatabase.JournalMode = RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING,
     val queryCoroutineContext: CoroutineContextType = CoroutineContextType.IO,
@@ -17,6 +18,9 @@ data class RoomProperties(
     companion object {
         /** 数据库名称  */
         const val ROOM_DATABASE_NAME = "room.databaseName"
+
+        /** 数据库路径  */
+        const val ROOM_DATABASE_PATH = "room.databasePath"
 
         /** 数据库后缀名称  */
         const val ROOM_DATABASE_SUFFIX_NAME = "room.databaseSuffixName"
@@ -56,6 +60,15 @@ var KoinProperties.room_database_name: String
         RoomProperties.ROOM_DATABASE_NAME(value)
     }
 
+/**
+ * 数据库路径
+ *
+ */
+var KoinProperties.room_database_path: String
+    get() = (this[RoomProperties.ROOM_DATABASE_PATH] as String?) ?: RoomProperties().databasePath
+    set(value) {
+        RoomProperties.ROOM_DATABASE_PATH(value)
+    }
 /**
  * 数据库名称后缀
  *
